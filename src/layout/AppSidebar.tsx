@@ -1,13 +1,18 @@
 "use client";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // Aseguramos useRouter
 import { useSidebar } from "../context/SidebarContext";
 import { GridIcon, TableIcon, ChevronDownIcon, HorizontaLDots, PlugInIcon } from "../icons/index";
+import { useAuth } from "@/hooks/useAuth";
 
-// 1. IMPORTAR EL HOOK DE AUTENTICACIÓN
-import { useAuth } from "@/hooks/useAuth"; // **Asegúrate que esta ruta es correcta**
+// Definición de tipos para el usuario
+type UserType = {
+    id: number;
+    email: string;
+    roleId: number; 
+    name: string;
+};
 
 // Define la estructura de los elementos del menú
 type NavItem = {
@@ -17,18 +22,28 @@ type NavItem = {
     subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
+// ----------------------------------------------------------------------
+// DEFINICIÓN DE ELEMENTOS BASE (VISTO POR TODOS)
+// ----------------------------------------------------------------------
 const defaultNavItems: NavItem[] = [
     {
         icon: <GridIcon />,
         name: "Dashboard",
-        subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+        subItems: [{ name: "Página principal", path: "/", pro: false }],
     },
     {
         icon: <PlugInIcon />,
         name: "Authentication",
         subItems: [
+            // SOLO MANTENEMOS SIGN IN
             { name: "Sign In", path: "/signin", pro: false },
-            { name: "Sign Up", path: "/signup", pro: false },
+        ],
+    },
+    {
+        icon: <TableIcon />, 
+        name: "Dashboard Admin",
+        subItems: [
+            { name: "Users", path: "/security-tests" }, 
         ],
     },
 ];
@@ -36,39 +51,75 @@ const defaultNavItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
     const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
     const pathname = usePathname();
+    const router = useRouter(); 
 
-    // 2. OBTENER EL CONTEXTO DEL USUARIO (Corregido para manejar 'null')
-    // =========================================================================
-    // **CAMBIO CRÍTICO**: Obtenemos el contexto completo primero, que puede ser null.
-   const authContext = useAuth() as any; 
-    const user = authContext?.user;
-    const loading = authContext?.loading; 
-    
-    // Dejamos esta variable solo para referencia, pero no la usaremos en el IF
-    const esAdministrador = user?.roleId === 3; 
-    
-    // 3. GENERAR navItems (TEMPORALMENTE SIN CONDICIÓN)
+    // OBTENER EL CONTEXTO DEL USUARIO DE FORMA SEGURA
+    const authResult = useAuth() as any || { user: null, loading: true }; 
+    const { user, loading } = authResult;
+
+    const typedUser: UserType | null = user as UserType | null;
+    const typedLoading: boolean = loading as boolean;
+
+    // Lógica real: mostrar herramientas solo si es rol 1 y está logueado
+    const mostrarAdminTools = typedUser && typedUser.roleId === 1; 
+
+    // GENERAR navItems CON LÓGICA CONDICIONAL
     const navItems = React.useMemo(() => {
-        let items: NavItem[] = [...defaultNavItems]; // Empezar con los elementos por defecto
+        let items: NavItem[] = [...defaultNavItems];
 
-        // 🚨 CAMBIO TEMPORAL: LO AGREGAMOS SIEMPRE PARA VER SI EL COMPONENTE LO RENDERIZA 🚨
-        items.push({
-            icon: <TableIcon />, 
-            name: "Security",
-            subItems: [
-                { name: "Pruebas de Seguridad", path: "/security-tests" }, 
-            ],
-        });
-        
+        if (mostrarAdminTools) {
+             items.push({
+                 icon: <PlugInIcon />, 
+                 name: "Administration Tools", 
+                 subItems: [
+                     { name: "Asignar Compañías", path: "/companies/assign" },
+                     { name: "Gestión de Roles/Permisos", path: "/admin-permissions" }, 
+                 ],
+             });
+        }
+
         return items;
-    }, [esAdministrador]);// Se recalcula cuando el rol del usuario cambia
+    }, [mostrarAdminTools]);
 
-    // Resto del código de estado y efectos (se deja igual)
+    // ====================================================================
+    // LÓGICA DE REDIRECCIÓN (Control de Autenticación)
+    // ====================================================================
+    useEffect(() => {
+        // Detener la lógica mientras el estado de autenticación está cargando/resolviéndose
+        if (typedLoading) {
+            return;
+        }
+
+        const isSignInRoute = pathname === "/signin"; 
+        const homePath = "/";
+        
+        // Caso A: Usuario NO autenticado en una ruta protegida.
+        // Redirigir a /signin.
+        if (!typedUser && !isSignInRoute) {
+            console.log("No autenticado. Redirigiendo a /signin...");
+            // Usar replace para prevenir bucles y limpiar el historial
+            router.replace("/signin");
+            return;
+        }
+
+        // Caso B: Usuario SÍ autenticado y está en la página de /signin.
+        // Redirigir a la página principal.
+        if (typedUser && isSignInRoute) {
+            console.log("Autenticado en /signin. Redirigiendo a la página principal (/).");
+            // Usar replace para prevenir bucles y limpiar el historial
+            router.replace(homePath);
+            return;
+        }
+
+    }, [typedLoading, typedUser, pathname, router]);
+
+
+    // CÓDIGO DE MANEJO DE ESTADO DEL SIDEBAR (Acordeón)
     const [openSubmenu, setOpenSubmenu] = useState<{
         index: number;
     } | null>(null);
     const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
-    const subMenuRefs = useRef<Record<number, HTMLDivElement | null>>({});
+    const subMenuRefs = useRef<Record<number, HTMLDivElement | null>>({}); 
 
     const isActive = useCallback(
         (path: string) => path === pathname,
@@ -90,7 +141,7 @@ const AppSidebar: React.FC = () => {
         if (!matched) {
             setOpenSubmenu(null);
         }
-    }, [pathname, isActive, navItems]); // Añadir navItems a las dependencias
+    }, [pathname, isActive, navItems]);
 
     useEffect(() => {
         if (openSubmenu !== null) {
@@ -110,14 +161,29 @@ const AppSidebar: React.FC = () => {
             prev && prev.index === index ? null : { index }
         );
     };
+    
+    // Clases de utilidad
+    const menuItemClass = `
+        flex items-center w-full p-3 text-sm font-medium rounded-lg 
+        transition-colors duration-200 
+    `;
+    const activeMenuItemClass = `
+        bg-indigo-50 dark:bg-gray-800 text-indigo-600 dark:text-indigo-400
+    `;
+    const inactiveMenuItemClass = `
+        text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700
+    `;
+    const iconBaseClass = `
+        w-5 h-5 flex-shrink-0 transition-colors duration-200
+    `;
+    const activeIconClass = `
+        text-indigo-600 dark:text-indigo-400
+    `;
+    const inactiveIconClass = `
+        text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400
+    `;
 
-    // Si está cargando, podemos mostrar un esqueleto o simplemente esperar que el provider lo maneje
-    if (loading) {
-        return <aside className="fixed top-[60px] left-0 mt-0 px-5 bg-white dark:bg-gray-900 w-[90px] h-screen z-50 border-r border-gray-200"><div className="py-6">Cargando...</div></aside>;
-    }
-
-
-    // El resto del JSX de renderizado
+    // RETORNA EL SIDEBAR COMPLETO
     return (
         <aside
             className={`fixed top-[60px] left-0 mt-0 px-5 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen z-50 border-r border-gray-200 transition-all duration-300 ease-in-out ${
@@ -128,7 +194,7 @@ const AppSidebar: React.FC = () => {
             onMouseEnter={() => !isExpanded && setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
-            <div className="flex flex-col overflow-y-auto no-scrollbar duration-300 ease-linear">
+            <div className="flex flex-col overflow-y-auto no-scrollbar duration-300 ease-in-out">
                 <nav className="mb-6">
                     <h2
                         className={`pt-6 mb-4 text-xs uppercase text-gray-400 ${
@@ -139,94 +205,97 @@ const AppSidebar: React.FC = () => {
                     >
                         {isExpanded || isHovered || isMobileOpen ? "Menu" : <HorizontaLDots />}
                     </h2>
-                    <ul className="flex flex-col gap-4">
-                        {/* Se recorren los navItems generados condicionalmente */}
+                    <ul className="flex flex-col gap-1">
                         {navItems.map((nav, idx) => ( 
                             <li key={nav.name}>
-                                {/* ... Resto de tu lógica para renderizar subItems y botones ... */}
-                                {nav.subItems ? (
-                                    <button
-                                        onClick={() => handleSubmenuToggle(idx)}
-                                        className={`menu-item group cursor-pointer ${
-                                            openSubmenu?.index === idx
-                                                ? "menu-item-active"
-                                                : "menu-item-inactive"
-                                        } ${
-                                            !isExpanded && !isHovered
-                                                ? "lg:justify-center"
-                                                : "lg:justify-start"
+                                {/* Enlace principal si no tiene subItems */}
+                                {nav.path && !nav.subItems ? (
+                                    <Link
+                                        href={nav.path}
+                                        className={`${menuItemClass} group ${
+                                            isActive(nav.path)
+                                                ? activeMenuItemClass
+                                                : inactiveMenuItemClass
                                         }`}
                                     >
                                         <span
-                                            className={`${
-                                                openSubmenu?.index === idx
-                                                    ? "menu-item-icon-active"
-                                                    : "menu-item-icon-inactive"
+                                            className={`${iconBaseClass} ${
+                                                isActive(nav.path)
+                                                    ? activeIconClass
+                                                    : inactiveIconClass
                                             }`}
                                         >
                                             {nav.icon}
                                         </span>
                                         {(isExpanded || isHovered || isMobileOpen) && (
-                                            <span className="menu-item-text">{nav.name}</span>
+                                            <span className="ml-3 truncate">{nav.name}</span>
                                         )}
-                                        {(isExpanded || isHovered || isMobileOpen) && (
-                                            <ChevronDownIcon
-                                                className={`ml-auto w-5 h-5 transition-transform duration-200 ${
-                                                    openSubmenu?.index === idx ? "rotate-180 text-brand-500" : ""
-                                                }`}
-                                            />
-                                        )}
-                                    </button>
+                                    </Link>
                                 ) : (
-                                    nav.path && (
-                                        <Link
-                                            href={nav.path}
-                                            className={`menu-item group ${
-                                                isActive(nav.path)
-                                                    ? "menu-item-active"
-                                                    : "menu-item-inactive"
-                                            }`}
-                                        >
+                                    // Botón para subItems
+                                    <button
+                                        onClick={() => handleSubmenuToggle(idx)}
+                                        className={`${menuItemClass} group cursor-pointer w-full justify-between ${
+                                            openSubmenu && openSubmenu.index === idx 
+                                                ? activeMenuItemClass
+                                                : inactiveMenuItemClass
+                                        }`}
+                                    >
+                                        <div className="flex items-center flex-shrink-0">
                                             <span
-                                                className={`${
-                                                    isActive(nav.path)
-                                                        ? "menu-item-icon-active"
-                                                        : "menu-item-icon-inactive"
+                                                className={`${iconBaseClass} ${
+                                                    openSubmenu && openSubmenu.index === idx
+                                                        ? activeIconClass
+                                                        : inactiveIconClass
                                                 }`}
                                             >
                                                 {nav.icon}
                                             </span>
                                             {(isExpanded || isHovered || isMobileOpen) && (
-                                                <span className="menu-item-text">{nav.name}</span>
+                                                <span className="ml-3 truncate text-left">{nav.name}</span>
                                             )}
-                                        </Link>
-                                    )
+                                        </div>
+                                        {/* Flecha de acordeón */}
+                                        {(isExpanded || isHovered || isMobileOpen) && nav.subItems && (
+                                            <ChevronDownIcon 
+                                                className={`w-4 h-4 ml-auto transition-transform duration-200 ${
+                                                    openSubmenu && openSubmenu.index === idx ? "rotate-180" : ""
+                                                }`}
+                                            />
+                                        )}
+                                    </button>
                                 )}
-                                {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
+                                
+                                {/* Submenú (Acordeón) */}
+                                {nav.subItems && (
                                     <div
                                         ref={(el) => {
-                                            subMenuRefs.current[idx] = el;
+                                            if (el) subMenuRefs.current[idx] = el;
                                         }}
-                                        className="overflow-hidden transition-all duration-300"
                                         style={{
-                                            height:
-                                                openSubmenu?.index === idx
-                                                    ? `${subMenuHeight[idx]}px`
-                                                    : "0px",
+                                            maxHeight: openSubmenu && openSubmenu.index === idx
+                                                ? `${subMenuHeight[idx] || 0}px` 
+                                                : "0",
                                         }}
+                                        className="overflow-hidden transition-max-height duration-300 ease-in-out"
                                     >
-                                        <ul className="mt-2 space-y-1 ml-9">
+                                        <ul className="flex flex-col pt-2 pb-1 space-y-1">
                                             {nav.subItems.map((sub) => (
-                                                <li key={sub.name}>
+                                                <li key={sub.name} className="ml-5">
                                                     <Link
                                                         href={sub.path}
-                                                        className={`menu-dropdown-item ${
+                                                        className={`flex items-center p-2 text-sm rounded-lg transition-colors duration-200 ${
                                                             isActive(sub.path)
-                                                                ? "menu-dropdown-item-active"
-                                                                : "menu-dropdown-item-inactive"
+                                                                ? "bg-indigo-100 dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 font-semibold"
+                                                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 font-normal"
                                                         }`}
                                                     >
-                                                        {sub.name}
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-current mr-3"></span>
+                                                        <span className="truncate">
+                                                            {sub.name}
+                                                        </span>
+                                                        {sub.pro && <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">PRO</span>}
+                                                        {sub.new && <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">NEW</span>}
                                                     </Link>
                                                 </li>
                                             ))}
@@ -241,5 +310,4 @@ const AppSidebar: React.FC = () => {
         </aside>
     );
 };
-
 export default AppSidebar;

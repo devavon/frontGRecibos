@@ -1,55 +1,107 @@
-"use client"
+"use client";
 
-import React, { createContext, useState, useContext } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useContext, createContext, useMemo } from 'react';
+import axios from 'axios'; 
 
-// 1. Crear el contexto
+// CRÍTICO: Usamos el puerto 3000 para el backend, como confirmaste.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'; 
+
 const AuthContext = createContext();
 
-// URL de tu API de Node.js
-const API_URL = 'http://localhost:3000'; 
-
-export const AuthProvider = ({ children }) => {
-    // 2. Estado: Cargar token desde el almacenamiento local si existe
-    const [token, setToken] = useState(localStorage.getItem('token') || null);
-    const [user, setUser] = useState(null); 
-
-    // 3. Función de Login
-    const login = async (email, password) => {
-        try {
-            const response = await axios.post(`${API_URL}/login`, { email, password });
-            const newToken = response.data.token;
-            
-            setToken(newToken); 
-            localStorage.setItem('token', newToken); 
-            
-            // Aquí podrías decodificar el token o hacer otra llamada para obtener el nombre del usuario
-            setUser({ email }); 
-
-            return { success: true, message: "Login exitoso" };
-        } catch (error) {
-            console.error("Error en login:", error.response?.data || error.message);
-            setToken(null);
-            localStorage.removeItem('token');
-            setUser(null);
-            return { success: false, message: error.response?.data?.error || "Error de credenciales" };
-        }
-    };
-
-    // 4. Función de Logout
-    const logout = () => {
-        setToken(null);
-        localStorage.removeItem('token');
-        setUser(null);
-    };
-
-    // 5. Proveedor de contexto que envuelve la aplicación
-    return (
-        <AuthContext.Provider value={{ token, user, login, logout, isAuthenticated: !!token }}>
-            {children}
-        </AuthContext.Provider>
-    );
-};
-
-// 6. Hook personalizado para usar el contexto fácilmente
+// Hook personalizado
 export const useAuth = () => useContext(AuthContext);
+
+// Proveedor de Autenticación
+export const AuthProvider = ({ children }) => {
+    // Estados iniciales
+    const [token, setToken] = useState(null);
+    const [user, setUser] = useState(null); // Corregido: La sintaxis de useState debe ser correcta.
+    const [isLoading, setIsLoading] = useState(true); 
+
+    /**
+     * EFECTO CRÍTICO: Se ejecuta SOLO en el cliente (navegador) para leer localStorage
+     * y restaurar la sesión.
+     */
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const storedToken = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
+
+            if (storedToken) {
+                setToken(storedToken);
+                axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+            }
+
+            if (storedUser) {
+                try {
+                    setUser(JSON.parse(storedUser));
+                } catch (e) {
+                    console.error("Error al parsear el usuario almacenado:", e);
+                    localStorage.removeItem('user'); 
+                }
+            }
+        }
+        setIsLoading(false);
+    }, []);
+
+    // Función de Login
+    const login = async (email, password) => {
+        setIsLoading(true);
+        try {
+            const fullUrl = `${API_URL}/api/login`;
+            console.log("Intentando iniciar sesión en:", fullUrl);
+            
+            const response = await axios.post(fullUrl, { email, password }); 
+            
+            const newToken = response.data.token;
+            const userData = response.data.user; 
+
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('token', newToken);
+                localStorage.setItem('user', JSON.stringify(userData));
+            }
+
+            axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+            
+            setToken(newToken);
+            setUser(userData);
+            
+            return response.data;
+        } catch (error) {
+            console.error(`Fallo en el Login. Asegúrate de que el backend esté corriendo en ${API_URL}`, error.response?.data?.message || error.message);
+            logout(); 
+            throw error; 
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Función de Logout
+    const logout = () => {
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        }
+        delete axios.defaults.headers.common['Authorization'];
+        
+        setToken(null);
+        setUser(null);
+    };
+
+    // Memorizamos el valor del contexto
+    const contextValue = useMemo(() => ({
+        token,
+        user,
+        isAuthenticated: !!token, 
+        isLoading,
+        login,
+        logout,
+    }), [token, user, isLoading]);
+
+
+    return (
+        <AuthContext.Provider value={contextValue}>
+            {isLoading ? <div className="p-8 text-center text-gray-500">Verificando sesión...</div> : children}
+        </AuthContext.Provider>
+    );
+};
