@@ -51,7 +51,7 @@ interface NewUserDataPayload {
 
 // Mapeo de Roles para el formulario de nuevo usuario
 const ROLES: { id: number; name: string }[] = [
-    { id: 2, name: 'Usuario Regular' },
+    { id: 4, name: 'Usuario Regular' },
     { id: 3, name: 'Administrador del Sistema' },
 ];
 
@@ -396,7 +396,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ allCompanies, allRoles, onC
         email: '',
         password: '',
         companyId: defaultCompanyId,
-        roleId: 2, // Default to 'Usuario Regular'
+        roleId: 4, // Default to 'Usuario Regular'
     });
     const [formError, setFormError] = useState<string | null>(null);
 
