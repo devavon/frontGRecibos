@@ -49,11 +49,33 @@ interface NewUserDataPayload {
     roleId: number;
 }
 
+
+// Definición de la interfaz para el tipo de rol
+interface Role {
+    id: number;
+    name: string;
+}
+
 // Mapeo de Roles para el formulario de nuevo usuario
-const ROLES: { id: number; name: string }[] = [
-    { id: 4, name: 'Usuario Regular' },
-    { id: 3, name: 'Administrador del Sistema' },
+const ROLES: Role[] = [ // Usa Role[] en lugar del tipado inline erróneo
+    { id: 4, name: 'Usuario Regular' }, 
+    { id: 3, name: 'Administrador' },
 ];
+
+
+// Función para obtener el nombre del rol por ID (la tabla la necesita)
+const getRoleName = (roleId: number | null | undefined): string => {
+    // 1. Manejar valores nulos o indefinidos inmediatamente
+    if (roleId === null || roleId === undefined) {
+        return 'Usuario'; // O el texto que prefieras
+    }
+    
+    // 2. Buscar el rol
+    const role = ROLES.find(r => r.id === roleId);
+    
+    // 3. Devolver el nombre o el rol desconocido (sin el ID si es desconocido)
+    return role ? role.name : 'Rol Desconocido'; // Quitamos el (${roleId})
+};
 
 
 // =========================================================
@@ -86,6 +108,7 @@ export default function UserListDashboard() {
 
 
     // Mapeo para obtener el nombre de la compañía
+    //ESTO ES LO QUE HAYQUEQUITAR LUEGO 
     const companyMap = useMemo(() => {
         return companies.reduce((map, company) => {
             map[company.id] = company.name;
@@ -305,7 +328,8 @@ export default function UserListDashboard() {
                             <tr>
                                 <Th icon={User} label="USUARIO" />
                                 <Th icon={Mail} label="EMAIL" />
-                                <Th icon={Building} label="COMPAÑÍA PRINCIPAL" />
+                                <Th icon={Key} label="" />
+                                <Th icon={Key} label="Asignación Rol" />
                                 <Th icon={Key} label="PERMISOS DE EMPRESA" />
                                 <Th icon={Pencil} label="ACCIONES" />
                             </tr>
@@ -315,7 +339,9 @@ export default function UserListDashboard() {
                                 <tr key={user.id} className="hover:bg-indigo-50/50 transition">
                                     <Td className="font-semibold text-gray-800">{user.name}</Td>
                                     <Td>{user.email}</Td>
-                                    <Td className={`font-medium ${user.roleId === 3 ? 'text-green-600' : 'text-indigo-600'}`}>{user.companyId ? companyMap[user.companyId] || 'ID Desconocido' : 'N/A (Admin)'}</Td>
+                                    <Td className={`font-medium ${user.roleId === 3 ? 'text-red-600' : 'text-indigo-600'}`}>
+                                           {getRoleName(user.roleId)}
+                                    </Td>
                                     <Td>
                                         <PermissionBadge 
                                             count={user.roleId === 3 
