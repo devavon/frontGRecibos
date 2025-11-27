@@ -18,6 +18,8 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext'; 
 //NUEVOO
 import EditRoleModal from './EditRoleModal';
+import { Trash2 } from 'lucide-react'; // Asegúrate de importar el ícono si lo usas
+import Swal from 'sweetalert2'; // Se requiere SweetAlert2 para la confirmación
 
 // RUTAS DE API REALES
 const API_BASE_URL = 'http://localhost:3000/api/admin'; 
@@ -336,6 +338,68 @@ const handleSaveNewRole = async (userId: string, newRoleId: number) => {
     }
 };
 
+const handleDeleteUser = async (userId: number) => {
+    // 1. CONFIRMACIÓN DE SEGURIDAD
+    const confirmation = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: "¡No podrás revertir esto! El usuario y sus datos serán eliminados.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33', // Rojo
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar!',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmation.isConfirmed) {
+        return; 
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+        console.error("Token de autenticación no encontrado.");
+        Swal.fire('Error', 'No estás autenticado.', 'error');
+        return;
+    }
+
+    // 2. LLAMADA A LA API (DELETE)
+    try {
+        const API_URL = 'http://localhost:3000';
+        
+        const response = await fetch(`${API_URL}/api/admin/users/${userId}`, { 
+            method: 'DELETE', 
+            headers: {
+                'Authorization': `Bearer ${token}` 
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = `Fallo al eliminar: ${response.status} ${response.statusText}`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.error || errorJson.message || errorMessage;
+            } catch {}
+            throw new Error(errorMessage);
+        }
+
+        // 3. ACTUALIZACIÓN DE ESTADO (Frontend)
+        // Eliminamos el usuario de la lista local para que desaparezca sin recargar.
+        setUsers(prevUsers => prevUsers.filter(user => 
+    // 🚨 SOLUCIÓN: Convertir el ID de la lista (user.id) a número 
+    // antes de compararlo con el userId (que ya es un número).
+    parseInt(user.id) !== userId 
+));
+
+Swal.fire('Eliminado!', 'El usuario ha sido eliminado correctamente.', 'success');
+
+    } catch (error) {
+        console.error("Error al eliminar el usuario:", error);
+        Swal.fire('Error FATAL', (error as Error).message, 'error');
+    }
+};
+
+
  /*    const handleCloseAddModal = () => {
         setIsAddModalOpen(false);
     }; */
@@ -451,6 +515,7 @@ const handleSaveNewRole = async (userId: string, newRoleId: number) => {
                                 <Th icon={Mail} label="EMAIL" />
                                 <Th icon={Key} label="Asignación Role" />
                                 <Th icon={Key} label="Role" />
+                                <Th icon={Key} label="Eliminar Usuaio" />
                                 <Th icon={Key} label="PERMISOS DE EMPRESA" />
                                 <Th icon={Pencil} label="ACCIONES" />
                             </tr>
@@ -473,6 +538,17 @@ const handleSaveNewRole = async (userId: string, newRoleId: number) => {
                                     </Td>
                                     <Td className={`font-medium ${user.roleId === 3 ? 'text-red-600' : 'text-indigo-600'}`}>
                                            {getRoleName(user.roleId)}
+                                    </Td>
+                                    <Td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <button
+                                            // ANTES: onClick={() => handleDeleteUser(user.id)}
+                                            // AHORA: Convertimos el ID a número antes de enviarlo
+                                            onClick={() => handleDeleteUser(parseInt(user.id))} 
+                                            className="px-3 py-1 bg-red-500 text-white rounded-full text-xs font-medium hover:bg-red-600 transition flex items-center shadow-md shadow-red-500/30"
+                                            title={`Eliminar usuario ${user.name}`}
+                                        >
+                                            <Trash2 className="w-3 h-3 mr-1" /> Eliminar
+                                        </button>
                                     </Td>
                                     <Td>
                                         <PermissionBadge 
