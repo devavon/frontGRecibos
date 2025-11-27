@@ -16,6 +16,8 @@ import axios from 'axios';
 // 🔑 RUTA CORREGIDA: Apuntando al archivo que encontraste.
 // ⚠️ Si esta ruta sigue en rojo, ajusta los `../` hasta que desaparezca el error.
 import { useAuth } from '../context/AuthContext'; 
+//NUEVOO
+import EditRoleModal from './EditRoleModal';
 
 // RUTAS DE API REALES
 const API_BASE_URL = 'http://localhost:3000/api/admin'; 
@@ -96,6 +98,11 @@ export default function UserListDashboard() {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    //NUEVOO
+    const [isEditRoleModalOpen, setIsEditRoleModalOpen] = useState(false);
+    const [userToEditRole, setUserToEditRole] = useState<UserData | null>(null);
+    const [isUpdatingRole, setIsUpdatingRole] = useState(false);
     
     // Estados para la funcionalidad de Edición
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -105,6 +112,20 @@ export default function UserListDashboard() {
     // Estados para el Add User
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isAddingUser, setIsAddingUser] = useState(false);
+     // ⬅️ 1. NUEVO ESTADO: Guarda el usuario que vamos a editar.
+    const [userBeingEdited, setUserBeingEdited] = useState<UserData | null>(null);
+
+    // Modificación de handleCloseAddModal
+    const handleCloseAddModal = () => {
+        setIsAddModalOpen(false);
+        setUserBeingEdited(null); // CRUCIAL: Limpia el estado
+    };
+
+    // Nueva función para manejar el clic en la tabla
+    /* const handleEditRoleClick = (user: UserData) => {
+        setUserBeingEdited(user);
+        setIsAddModalOpen(true);
+    }; */
 
 
     // Mapeo para obtener el nombre de la compañía
@@ -215,9 +236,45 @@ export default function UserListDashboard() {
         setIsAddModalOpen(true);
     };
 
-    const handleCloseAddModal = () => {
+    // UserListDashboard.tsx (Sección de Funciones)
+
+// Función que abre el nuevo modal
+const handleEditRoleClick = (user: UserData) => {
+    setUserToEditRole(user);
+    setIsEditRoleModalOpen(true);
+};
+
+// Función que cierra el nuevo modal y limpia el estado
+const handleCloseEditRoleModal = () => {
+    setIsEditRoleModalOpen(false);
+    setUserToEditRole(null);
+};
+
+// Función que maneja la llamada a la API desde el modal (lo que estaba en onSave)
+const handleSaveNewRole = async (userId: string, newRoleId: number) => {
+    setIsUpdatingRole(true);
+    
+    try {
+        console.log(`Guardando nuevo rol: ${newRoleId} para usuario: ${userId}`);
+        
+        // 🚨 Lógica de API: Implementa tu fetch/axios.put aquí.
+        // Ejemplo: await fetch(`/api/users/${userId}/role`, { method: 'PUT', body: JSON.stringify({ roleId: newRoleId }) });
+        
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulación
+
+        // 💡 Después de guardar, si es exitoso:
+        // 1. Actualiza el estado 'users' de tu lista.
+        handleCloseEditRoleModal();
+    } catch (error) {
+        console.error("Error al guardar el nuevo rol:", error);
+    } finally {
+        setIsUpdatingRole(false);
+    }
+};
+
+ /*    const handleCloseAddModal = () => {
         setIsAddModalOpen(false);
-    };
+    }; */
 
     const handleAddUser = async (newUserData: NewUserDataPayload) => {
         console.log("1. INICIANDO LLAMADA A API para crear usuario:", newUserData);
@@ -328,8 +385,8 @@ export default function UserListDashboard() {
                             <tr>
                                 <Th icon={User} label="USUARIO" />
                                 <Th icon={Mail} label="EMAIL" />
-                                <Th icon={Key} label="" />
-                                <Th icon={Key} label="Asignación Rol" />
+                                <Th icon={Key} label="Asignación Role" />
+                                <Th icon={Key} label="Role" />
                                 <Th icon={Key} label="PERMISOS DE EMPRESA" />
                                 <Th icon={Pencil} label="ACCIONES" />
                             </tr>
@@ -339,6 +396,17 @@ export default function UserListDashboard() {
                                 <tr key={user.id} className="hover:bg-indigo-50/50 transition">
                                     <Td className="font-semibold text-gray-800">{user.name}</Td>
                                     <Td>{user.email}</Td>
+                                    {/* Columna de Asignación Role (Tercera celda) */}
+                                    <Td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        {/* Botón para editar el Rol */}
+                                        <button
+                                            onClick={() => handleEditRoleClick(user)} // <-- Función para el cambio de ROL
+                                            className="px-3 py-1 bg-green-500 text-white rounded-full text-xs font-medium hover:bg-green-600 transition flex items-center shadow-md shadow-green-500/30"
+                                            title={`Cambiar Rol para ${user.name}`}
+                                        >
+                                            <Key className="w-3 h-3 mr-1" /> Rol
+                                        </button>
+                                    </Td>
                                     <Td className={`font-medium ${user.roleId === 3 ? 'text-red-600' : 'text-indigo-600'}`}>
                                            {getRoleName(user.roleId)}
                                     </Td>
@@ -357,7 +425,7 @@ export default function UserListDashboard() {
                                             className="px-3 py-1 bg-indigo-500 text-white rounded-full text-xs font-medium hover:bg-indigo-600 transition flex items-center shadow-md shadow-indigo-500/30"
                                             title={`Editar permisos para ${user.name}`}
                                         >
-                                            <Pencil className="w-3 h-3 mr-1" /> Editar
+                                            <Pencil className="w-3 h-3 mr-1" /> Editar Company 
                                         </button>
                                     </Td>
                                 </tr>
@@ -395,6 +463,18 @@ export default function UserListDashboard() {
                     isSaving={isAddingUser}
                 />
             )}
+
+            {/* ⬅️ ¡NUEVO MODAL PARA EDICIÓN DE ROL! */}
+            {isEditRoleModalOpen && userToEditRole && (
+                <EditRoleModal
+                    user={userToEditRole} // ⬅️ Le pasamos el usuario completo
+                    allRoles={ROLES}
+                    onClose={handleCloseEditRoleModal}
+                    onSave={handleSaveNewRole} // ⬅️ Le pasamos la función de guardado
+                    isSaving={isUpdatingRole}
+                />
+            )}
+
         </div>
     );
 }
