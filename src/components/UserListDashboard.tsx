@@ -251,22 +251,86 @@ const handleCloseEditRoleModal = () => {
 };
 
 // Función que maneja la llamada a la API desde el modal (lo que estaba en onSave)
-const handleSaveNewRole = async (userId: string, newRoleId: number) => {
-    setIsUpdatingRole(true);
-    
-    try {
-        console.log(`Guardando nuevo rol: ${newRoleId} para usuario: ${userId}`);
-        
-        // 🚨 Lógica de API: Implementa tu fetch/axios.put aquí.
-        // Ejemplo: await fetch(`/api/users/${userId}/role`, { method: 'PUT', body: JSON.stringify({ roleId: newRoleId }) });
-        
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulación
+// UserListDashboard.tsx (Función handleSaveNewRole)
 
-        // 💡 Después de guardar, si es exitoso:
-        // 1. Actualiza el estado 'users' de tu lista.
-        handleCloseEditRoleModal();
+// UserListDashboard.tsx (Función handleSaveNewRole)
+
+
+const getAuthToken = (): string | null => {
+    // 🚨 Usamos la clave 'token' que encontramos en AuthContext.tsx
+    const token = localStorage.getItem('token'); 
+    return token;
+};
+
+const handleSaveNewRole = async (userId: string, newRoleId: number) => {
+    setIsUpdatingRole(true); // Activa el spinner
+    
+    // Obtener el token de autenticación
+    const token = getAuthToken(); 
+    
+    // Usamos el estado que contiene los datos del usuario seleccionado
+    const userToUpdate = userToEditRole; 
+
+    // Verificación de datos críticos
+    if (!userToUpdate || !token) { 
+        console.error("Operación cancelada: Token o datos de usuario ausentes.");
+        setIsUpdatingRole(false);
+        // Podrías agregar una alerta o redirigir al login si falta el token
+        return;
+    }
+
+    try {
+        // 🚨 CONFIGURACIÓN DE LA LLAMADA A LA API 🚨
+        const API_URL = 'http://localhost:3000'; // Puerto del Backend confirmado
+        
+        console.log(`Guardando rol ${newRoleId} para usuario ${userId} en el backend.`);
+
+        const response = await fetch(`${API_URL}/api/admin/users/${userId}`, { 
+            method: 'PUT', // Método PUT, según la Opción 1 de tu backend
+            headers: {
+                'Content-Type': 'application/json',
+                // SOLUCIÓN DEL 401: Enviar el token en el formato Bearer
+                'Authorization': `Bearer ${token}` 
+            },
+            // El cuerpo debe incluir name y email porque tu backend lo exige.
+            body: JSON.stringify({ 
+                name: userToUpdate.name,
+                email: userToUpdate.email,
+                roleId: newRoleId,
+                // 🚨 CORRECCIÓN: Asegúrate de enviar el companyId si existe.
+                // Esto es necesario para que tu lógica de upsert/delete no falle.
+                companyId: userToUpdate.companyId || null, 
+            }),
+        });
+
+        // Manejar la respuesta del servidor (cualquier código que no sea 2xx)
+        if (!response.ok) {
+            // Intenta leer el mensaje de error del backend
+            const errorText = await response.text();
+            let errorMessage = `Fallo en la actualización: ${response.status} ${response.statusText}`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.error || errorJson.message || errorMessage;
+            } catch {
+                // Si el error no es JSON (como el HTML del 404), usa el mensaje por defecto
+            }
+            throw new Error(errorMessage);
+        }
+        
+        // 🚨 ACTUALIZACIÓN DE ESTADO LOCAL (Frontend) 🚨
+        setUsers(prevUsers => 
+            prevUsers.map(u => 
+                u.id === userId 
+                    ? { ...u, roleId: newRoleId } // Cambia el rol del usuario editado
+                    : u
+            )
+        );
+
+        handleCloseEditRoleModal(); // Cierra el modal solo si el guardado fue exitoso
+
     } catch (error) {
-        console.error("Error al guardar el nuevo rol:", error);
+        console.error("Error al actualizar el rol:", error);
+        // Aquí puedes mostrar una notificación de error al usuario (ej: Swal.fire)
     } finally {
         setIsUpdatingRole(false);
     }

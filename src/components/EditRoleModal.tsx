@@ -39,7 +39,7 @@ const Loader2 = (props: any) => <svg {...props}><path d="M21 12a9 9 0 1 1-6.219-
 const EditRoleModal: React.FC<EditRoleModalProps> = ({ user, allRoles, onClose, onSave, isSaving }) => {
     
     // Inicializa el estado con el rol actual del usuario
-    const [newRoleId, setNewRoleId] = useState<number>(user.roleId);
+    const [newRoleId, setNewRoleId] = useState<number>(user.roleId || 0);
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
