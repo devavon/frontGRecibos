@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import EditRoleModal from './EditRoleModal';
 import { Trash2 } from 'lucide-react'; // Asegúrate de importar el ícono si lo usas
 import Swal from 'sweetalert2'; // Se requiere SweetAlert2 para la confirmación
+import toast from 'react-hot-toast';
 
 // RUTAS DE API REALES
 const API_BASE_URL = 'http://localhost:3000/api/admin'; 
@@ -202,30 +203,59 @@ export default function UserListDashboard() {
         setEditingUser(null);
     };
 
-    const handleSavePermissions = async (updatedIds: string[]) => {
-        if (!editingUser || !token) return;
+   const handleSavePermissions = async (updatedIds: string[]) => {
+        // Aseguramos que el usuario que se edita y el token existen
+        if (!editingUser || !token) {
+            toast.error("Error de sesión o usuario no seleccionado.");
+            return;
+        }
         
         setIsSaving(true);
         setError(null);
 
+        // 1. Convertir los IDs de string (del checkbox) a number (para la DB)
+        const companyIdsAsNumbers = updatedIds.map(id => parseInt(id, 10));
+
         try {
-            // LLAMADA A LA API DE ACTUALIZACIÓN - RUTA REAL
-            const response = await axios.put(`${API_BASE_URL}/users/${editingUser.id}`, 
-                { allowedCompanyIds: updatedIds }, // Solo enviamos el campo a actualizar
-                { headers: { 'Authorization': `Bearer ${token}` } }
+            // 🚨 CORRECCIÓN CLAVE: Crear el payload COMPLETO 🚨
+            // Se incluyen los datos principales (name, email, roleId) para pasar la validación 400 del backend.
+            const payload = {
+                name: editingUser.name,
+                email: editingUser.email,
+                roleId: editingUser.roleId, // Asumimos que el rolId no cambia en esta función
+                companyIds: companyIdsAsNumbers // El array de permisos de empresa
+            };
+
+            // LLAMADA A LA API DE ACTUALIZACIÓN - RUTA CORREGIDA
+            // La ruta debe ser '/api/admin/users/:id' para coincidir con tu backend.
+            const fullApiUrl = `${API_BASE_URL}/users/${editingUser.id}`; 
+            const response = await axios.put(fullApiUrl, 
+                payload, // Enviamos el payload completo
+                { 
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    } 
+                }
             );
 
-            // Actualizar el estado con el usuario devuelto por la API
+            // El backend corregido devuelve el objeto de usuario actualizado.
             const updatedUser = response.data as UserData;
+            
+            // Actualizar el estado de la lista de usuarios con el objeto devuelto
             setUsers(prevUsers => prevUsers.map(u => 
                 u.id === updatedUser.id ? updatedUser : u
             ));
             
             handleCloseEditModal();
+            toast.success("Permisos de empresa actualizados con éxito."); 
         } catch (err: any) {
             console.error("Error al guardar permisos:", err);
-            const apiError = err.response?.data?.message || err.message;
+            
+            // Manejo mejorado para extraer el mensaje de error del backend
+            const apiError = err.response?.data?.error || err.response?.data?.message || err.message;
             setError(`Fallo al guardar permisos: ${apiError}`);
+            toast.error(`Error al actualizar: ${apiError}`);
         } finally {
             setIsSaving(false);
         }
