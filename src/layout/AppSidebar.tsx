@@ -28,8 +28,8 @@ type NavItem = {
 const defaultNavItems: NavItem[] = [
     {
         icon: <GridIcon />,
-        name: "Dashboard",
-        subItems: [{ name: "Página principal", path: "/", pro: false }],
+        name: "Página principal",
+        subItems: [{ name: "Facturas", path: "/", pro: false }],
     },
     {
         icon: <PlugInIcon />,
