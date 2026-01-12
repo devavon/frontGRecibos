@@ -54,50 +54,52 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
 
   // Carga de datos
   const buscarFacturasInicial = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.replace("/signin");
-      return;
+  const token = localStorage.getItem("token");
+  
+  if (!token) {
+    window.location.replace("/signin");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    // Esta es la línea que te marca error en consola
+    const response = await fetch("http://localhost:3000/facturas", {
+      method: 'GET',
+      headers: { 
+        "Authorization": `Bearer ${token}`, // El 403 suele ser porque el token está mal o expiró
+        "Content-Type": "application/json"
+      }
+    });
+
+    // Si la respuesta no es 200 OK (es 400 o 403 como en tus fotos)
+    if (!response.ok) {
+      console.error(`Error de respuesta: ${response.status}`);
+      setFacturas([]); // IMPORTANTE: Seteamos lista vacía para que no explote el .filter
+      return; 
     }
 
-    setLoading(true);
-    try {
-      const dummyData: Factura[] = [
-        { id: 1, proveedor: "GAS NACIONAL ZETA S.A.", empresa: "CINCO HERMANOS GARNIER CHG SOCIEDAD ANONIMA", fecha: "2023-10-05T00:00:00Z", moneda: "$", monto: 1250.50, concepto: "Suministro de combustible de octubre", documentoUrl: "http://example.com/doc/1", email: "gas@zeta.com", banco: "Banco Nacional", numeroReferencia: "REF12345" },
-        { id: 2, proveedor: "ANA BEATRIZ LARA VASQUEZ", empresa: "CINCO HERMANOS GARNIER CHG SOCIEDAD ANONIMA", fecha: "2023-10-10T00:00:00Z", moneda: "USD", monto: 450.00, concepto: "Servicios de consultoría legal", documentoUrl: "http://example.com/doc/2", email: "ana@lara.com", banco: "Banco de Costa Rica", numeroReferencia: "REF67890" },
-        { id: 3, proveedor: "AGROSERVICIOS EL SALITRE S.A.", empresa: "OTRA EMPRESA S.A.", fecha: "2023-10-15T00:00:00Z", moneda: "¢", monto: 85000.75, concepto: "Compra de insumos agrícolas", documentoUrl: "http://example.com/doc/3", email: "agro@salitre.com", banco: "Banco Nacional", numeroReferencia: "REF11223" },
-        { id: 4, proveedor: "TECNOLOGÍA AVANZADA S.A.", empresa: "CINCO HERMANOS GARNIER CHG SOCIEDAD ANONIMA", fecha: "2023-11-01T00:00:00Z", moneda: "USD", monto: 120.00, concepto: "Mantenimiento de software", documentoUrl: "http://example.com/doc/4", email: "support@vendor.com", banco: "Banco Lafise", numeroReferencia: "REF44556" },
-        { id: 5, proveedor: "SERVICIOS CLOUD CR", empresa: "OTRA EMPRESA S.A.", fecha: "2023-11-10T00:00:00Z", moneda: "$", monto: 99.99, concepto: "Suscripción mensual", documentoUrl: null, email: "sub@service.com", banco: "Banco de Costa Rica", numeroReferencia: "REF77889" },
-        { id: 6, proveedor: "PAPELERÍA CENTRAL", empresa: "CINCO HERMANOS GARNIER CHG SOCIEDAD ANONIMA", fecha: "2023-11-15T00:00:00Z", moneda: "¢", monto: 15000.00, concepto: "Artículos de oficina", documentoUrl: "http://example.com/doc/6", email: "office@supply.com", banco: "Banco Nacional", numeroReferencia: "REF00112" },
-        { id: 7, proveedor: "LOGÍSTICA INTERNACIONAL", empresa: "CINCO HERMANOS GARNIER CHG SOCIEDAD ANONIMA", fecha: "2023-12-01T00:00:00Z", moneda: "USD", monto: 200.50, concepto: "Flete internacional", documentoUrl: "http://example.com/doc/7", email: "freight@logistics.com", banco: "Banco Lafise", numeroReferencia: "REF33445" },
-        { id: 8, proveedor: "HOSTING SOLUTIONS", empresa: "OTRA EMPRESA S.A.", fecha: "2023-12-05T00:00:00Z", moneda: "$", monto: 75.00, concepto: "Hosting web", documentoUrl: null, email: "host@web.com", banco: "Banco de Costa Rica", numeroReferencia: "REF66778" },
-        { id: 9, proveedor: "MARKETING DIGITAL CR", empresa: "CINCO HERMANOS GARNIER CHG SOCIEDAD ANONIMA", fecha: "2024-01-01T00:00:00Z", moneda: "¢", monto: 32000.00, concepto: "Marketing digital", documentoUrl: "http://example.com/doc/9", email: "digital@marketing.com", banco: "Banco Nacional", numeroReferencia: "REF99001" },
-        { id: 10, proveedor: "ERP SOLUTIONS S.A.", empresa: "CINCO HERMANOS GARNIER CHG SOCIEDAD ANONIMA", fecha: "2024-01-15T00:00:00Z", moneda: "USD", monto: 1500.00, concepto: "Software ERP licencia anual", documentoUrl: "http://example.com/doc/10", email: "erp@software.com", banco: "Banco Lafise", numeroReferencia: "REF22334" },
-        { id: 11, proveedor: "SOPORTE TÉCNICO TI", empresa: "OTRA EMPRESA S.A.", fecha: "2024-02-01T00:00:00Z", moneda: "$", monto: 50.00, concepto: "Soporte TI", documentoUrl: "http://example.com/doc/11", email: "ti@support.com", banco: "Banco de Costa Rica", numeroReferencia: "REF55667" },
-      ];
+    const data = await response.json();
 
-      const response = await fetch("http://localhost:3000/facturas", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!response.ok) {
-        setFacturas(dummyData);
-        showAlert("info", "Modo Demo", "Mostrando datos de ejemplo.");
-        throw new Error("Network response was not ok");
-      }
-
-      const data = await response.json();
+    // Verificamos que 'data' sea realmente lo que esperamos
+    if (Array.isArray(data)) {
       setFacturas(data);
-      setCurrentPage(1);
-    } catch (error) {
-      console.error("Error al buscar las facturas:", error);
-      if (facturas.length === 0) {
-        showAlert("error", "Error", "No se pudo cargar ningún dato.");
-      }
-    } finally {
-      setLoading(false);
+    } else {
+      console.warn("Los datos recibidos no son un Array:", data);
+      setFacturas([]); 
     }
-  }, [showAlert, facturas.length]);
+
+    setCurrentPage(1);
+
+  } catch (error) {
+    // Si hay error de red o el servidor está apagado
+    console.error("Error de conexión:", error);
+    setFacturas([]); // Mantenemos la seguridad de la App
+  } finally {
+    setLoading(false);
+  }
+}, [showAlert]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -153,7 +155,7 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
       const matchesBanco = !filterBanco || (factura.banco && factura.banco.toLowerCase().includes(filterBanco.toLowerCase()));
       const matchesMoneda = !filterMoneda || factura.moneda.toLowerCase() === filterMoneda.toLowerCase();
       const matchesNumeroReferencia = !filterNumeroReferencia || (factura.numeroReferencia && factura.numeroReferencia.includes(filterNumeroReferencia));
-      const matchesConcepto = !filterConcepto || factura.concepto.toLowerCase().includes(filterConcepto.toLowerCase());
+     const matchesConcepto = !filterConcepto || (factura.concepto && factura.concepto.toLowerCase().includes(filterConcepto.toLowerCase()));
 
       let matchesMontoRange = true;
       if (filterMontoMin !== '' && factura.monto < filterMontoMin) matchesMontoRange = false;
@@ -164,7 +166,7 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
       if (dateFrom) matchesFechaRange = matchesFechaRange && facturaDate >= dateFrom.getTime();
       if (dateToExclusive) matchesFechaRange = matchesFechaRange && facturaDate < dateToExclusive.getTime();
 
-      const matchesRole = userRole === "admin" || userCompanies.includes(factura.empresa);
+      const matchesRole = true;
 
       return matchesEmpresa && matchesProveedor && matchesBanco && matchesMoneda &&
              matchesNumeroReferencia && matchesConcepto && matchesMontoRange && matchesFechaRange && matchesRole;

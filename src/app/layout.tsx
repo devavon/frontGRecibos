@@ -7,6 +7,16 @@ import { ThemeProvider } from '@/context/ThemeContext';
 // ⚠️ 1. Importar el AuthProvider
 import { AuthProvider } from '@/context/AuthContext'; 
 
+// --- ESTO ES LO QUE ESTAMOS AGREGANDO ---
+export const metadata = {
+  title: "GComprobantes",
+  description: "Sistema de Gestión de Recibos",
+  icons: {
+    icon: "/icon.png", 
+  },
+};
+// ----------------------------------------
+
 const outfit = Outfit({
   subsets: ["latin"],
 });

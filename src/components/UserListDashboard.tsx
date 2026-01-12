@@ -223,37 +223,35 @@ export default function UserListDashboard() {
     const companyIdsAsNumbers = updatedIds.map(id => parseInt(id, 10));
 
     try {
-        // 🚨 CLAVE: Crear el payload COMPLETO 🚨
-        // El backend requiere name, email, y roleId, además de companyIds.
-        const payload = {
-            // Aseguramos que name y email no sean null/undefined
-            name: editingUser.name || '', 
-            email: editingUser.email || '', 
-            // Aseguramos que roleId es un número para que el backend lo pueda parsear
-            roleId: Number(editingUser.roleId),
-            companyIds: companyIdsAsNumbers
-        };
+    const payload = {
+    name: editingUser.name, 
+    email: editingUser.email, 
+    roleId: editingUser.roleId ? Number(editingUser.roleId) : 4, 
+    companyIds: companyIdsAsNumbers
+};
 
-        // LLAMADA A LA API DE ACTUALIZACIÓN - RUTA CORRECTA
-        // Usa la URL base y agrega /users/:id
-        const fullApiUrl = `${API_BASE_URL}/users/${editingUser.id}`; 
-        
-        const response = await axios.put(fullApiUrl, 
-            payload, // Enviamos el payload completo
-            { 
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                } 
-            }
-        );
+    // USAR ESTA LÍNEA:
+    const fullApiUrl = `${API_BASE_URL}/users/${parseInt(editingUser.id, 10)}`; 
+    
+    const response = await axios.put(fullApiUrl, payload, { 
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        } 
+    });
 
-        // El backend devuelve el objeto de usuario actualizado.
+       // El backend devuelve el objeto de usuario actualizado.
         const updatedUser = response.data as UserData;
         
-        // Actualizar el estado de la lista de usuarios con el objeto devuelto
+        // Actualizar el estado de la lista de usuarios
         setUsers(prevUsers => prevUsers.map(u => 
-            u.id === updatedUser.id ? updatedUser : u
+            String(u.id) === String(editingUser.id) 
+                ? { 
+                    ...u, 
+                    ...updatedUser, 
+                    allowedCompanyIds: updatedIds // Esto asegura que el Badge cambie al instante
+                  } 
+                : u
         ));
         
         handleCloseEditModal();
@@ -303,74 +301,60 @@ const getAuthToken = (): string | null => {
 };
 
 const handleSaveNewRole = async (userId: string, newRoleId: number) => {
-    setIsUpdatingRole(true); // Activa el spinner
-    
-    // Obtener el token de autenticación
+    setIsUpdatingRole(true);
     const token = getAuthToken(); 
-    
-    // Usamos el estado que contiene los datos del usuario seleccionado
     const userToUpdate = userToEditRole; 
 
-    // Verificación de datos críticos
     if (!userToUpdate || !token) { 
         console.error("Operación cancelada: Token o datos de usuario ausentes.");
         setIsUpdatingRole(false);
-        // Podrías agregar una alerta o redirigir al login si falta el token
         return;
     }
 
     try {
-        // 🚨 CONFIGURACIÓN DE LA LLAMADA A LA API 🚨
-        const API_URL = 'http://localhost:3000'; // Puerto del Backend confirmado
+        const API_URL = 'http://localhost:3000';
         
-        console.log(`Guardando rol ${newRoleId} para usuario ${userId} en el backend.`);
-
+        // 🚨 CORRECCIÓN CLAVE: Enviamos 'companyIds' (el array de permisos) 
+        // para no borrar las empresas que ya tiene permitidas el usuario.
         const response = await fetch(`${API_URL}/api/admin/users/${userId}`, { 
-            method: 'PUT', // Método PUT, según la Opción 1 de tu backend
+            method: 'PUT', 
             headers: {
                 'Content-Type': 'application/json',
-                // SOLUCIÓN DEL 401: Enviar el token en el formato Bearer
                 'Authorization': `Bearer ${token}` 
             },
-            // El cuerpo debe incluir name y email porque tu backend lo exige.
             body: JSON.stringify({ 
                 name: userToUpdate.name,
                 email: userToUpdate.email,
                 roleId: newRoleId,
-                // 🚨 CORRECCIÓN: Asegúrate de enviar el companyId si existe.
-                // Esto es necesario para que tu lógica de upsert/delete no falle.
-                companyId: userToUpdate.companyId || null, 
+                // Mapeamos los IDs actuales a números para que el backend los procese correctamente
+                companyIds: userToUpdate.allowedCompanyIds.map(id => parseInt(id))
             }),
         });
 
-        // Manejar la respuesta del servidor (cualquier código que no sea 2xx)
         if (!response.ok) {
-            // Intenta leer el mensaje de error del backend
             const errorText = await response.text();
-            let errorMessage = `Fallo en la actualización: ${response.status} ${response.statusText}`;
+            let errorMessage = `Fallo en la actualización: ${response.status}`;
             try {
                 const errorJson = JSON.parse(errorText);
                 errorMessage = errorJson.error || errorJson.message || errorMessage;
-            } catch {
-                // Si el error no es JSON (como el HTML del 404), usa el mensaje por defecto
-            }
+            } catch { /* no-op */ }
             throw new Error(errorMessage);
         }
         
-        // 🚨 ACTUALIZACIÓN DE ESTADO LOCAL (Frontend) 🚨
+        // Actualizamos el estado local para que la tabla refleje el cambio de rol inmediatamente
         setUsers(prevUsers => 
             prevUsers.map(u => 
-                u.id === userId 
-                    ? { ...u, roleId: newRoleId } // Cambia el rol del usuario editado
-                    : u
+                u.id === userId ? { ...u, roleId: newRoleId } : u
             )
         );
 
-        handleCloseEditRoleModal(); // Cierra el modal solo si el guardado fue exitoso
+        handleCloseEditRoleModal();
+        toast.success("Rol actualizado con éxito"); // Opcional si usas react-hot-toast
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error al actualizar el rol:", error);
-        // Aquí puedes mostrar una notificación de error al usuario (ej: Swal.fire)
+        // Si usas SweetAlert2 (Swal):
+        // Swal.fire('Error', error.message, 'error');
     } finally {
         setIsUpdatingRole(false);
     }

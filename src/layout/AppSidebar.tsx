@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import { ChevronDownIcon, HorizontaLDots } from "../icons/index";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/AuthContext"; /* import { useAuth } from "@/hooks/useAuth"; */
+import { LayoutGrid, Plug2, TableProperties } from 'lucide-react';
+import Image from 'next/image';
 
 // Iconos simples en SVG
 const HomeIcon = () => (
@@ -49,7 +51,12 @@ type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  subItems?: { name: string; path: string }[];
+  pro?: boolean;
+  subItems?: { 
+    name: string; 
+    path: string; 
+    pro?: boolean; // <--- Esto es lo que permite que no de error abajo
+  }[];
 };
 
 
@@ -58,12 +65,12 @@ type NavItem = {
 // ----------------------------------------------------------------------
 const defaultNavItems: NavItem[] = [
     {
-        icon: <GridIcon />,
+        icon: <LayoutGrid />,
         name: "Página principal",
         subItems: [{ name: "Facturas", path: "/", pro: false }],
     },
     {
-        icon: <PlugInIcon />,
+        icon: <Plug2 />,
         name: "Authentication",
         subItems: [
             // SOLO MANTENEMOS SIGN IN
@@ -71,7 +78,7 @@ const defaultNavItems: NavItem[] = [
         ],
     },
     {
-        icon: <TableIcon />, 
+        icon: <TableProperties />, 
         name: "Dashboard Admin",
         subItems: [
             { name: "Users", path: "/security-tests" }, 
@@ -84,56 +91,55 @@ const AppSidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
 
-  const authResult = useAuth() as any || { user: null, loading: true };
-  const { user, loading } = authResult;
+ /*  const authResult = useAuth() as any || { user: null, loading: true };
+  const { user, loading } = authResult; */
+  // Traemos user, isLoading y nuestra nueva función logout
+// 1. Extraemos todo del contexto de una vez
+  const { user, isLoading, logout } = useAuth() as any;
 
-  const typedUser: UserType | null = user as UserType | null;
-  const typedLoading: boolean = loading as boolean;
+  // 2. Asignamos los tipos una sola vez para evitar duplicados
+  const typedUser = user as UserType | null;
+  const typedLoading = isLoading as boolean;
 
+
+  const isUserAdmin = typedUser?.roleId === 3;
   // Menú principal - visible para todos los usuarios
-  const navItems: NavItem[] = [
+  // 2. Definimos navItems como "let" para poder modificarla
+  let navItems: NavItem[] = [
     {
       icon: <HomeIcon />,
       name: "Inicio",
       path: "/",
     },
-    {
-      icon: <DocumentIcon />,
-      name: "Comprobantes",
-      subItems: [
-        { name: "Ver todos", path: "/" },
-        { name: "Buscar", path: "/" },
-      ],
-    },
-    {
+  ];
+
+  // 3. Si el usuario es administrador, agregamos el menú de Administración
+  if (isUserAdmin) {
+    navItems.push({
       icon: <UsersIcon />,
       name: "Administración",
       subItems: [
         { name: "Usuarios", path: "/users" },
-        { name: "Asignar Empresas", path: "/companies/assign" },
-        { name: "Roles y Permisos", path: "/admin-permissions" },
       ],
-    },
-    {
-      icon: <SettingsIcon />,
-      name: "Configuración",
-      subItems: [
-        { name: "Mi Perfil", path: "/profile" },
-        { name: "Preferencias", path: "/settings" },
-      ],
-    },
-  ];
+    });
+  }
 
   // Lógica de redirección
   useEffect(() => {
     if (typedLoading) return;
 
-    const isSignInRoute = pathname === "/signin";
+    /* const isSignInRoute = pathname === "/signin";
 
     if (!typedUser && !isSignInRoute) {
       router.replace("/signin");
       return;
-    }
+    } */
+   const isSignInRoute = pathname === "/login";
+
+if (!typedUser && !isSignInRoute) {
+  router.replace("/login");
+  return;
+}
 
     if (typedUser && isSignInRoute) {
       router.replace("/");
@@ -179,10 +185,15 @@ const AppSidebar: React.FC = () => {
     setOpenSubmenu((prev) => (prev && prev.index === index ? null : { index }));
   };
 
-  const handleLogout = () => {
+  /* const handleLogout = () => {
     localStorage.removeItem("token");
     router.replace("/signin");
-  };
+  }; */
+  const handleLogout = () => {
+  // Esta función 'logout' ya tiene programado borrar Cookies, 
+  // LocalStorage y redirigirte a /login automáticamente
+  logout(); 
+};
 
   return (
     <aside
@@ -192,20 +203,33 @@ const AppSidebar: React.FC = () => {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Logo en sidebar */}
-      <div className="flex items-center h-16 px-4 border-b border-gray-200 dark:border-gray-800">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">G</span>
-          </div>
-          {(isExpanded || isHovered || isMobileOpen) && (
-            <div className="flex flex-col">
-              <span className="text-lg font-bold text-gray-900 dark:text-white">GRecibos</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Garnier y Garnier</span>
-            </div>
-          )}
-        </Link>
+     {/* Logo en sidebar */}
+<div className="flex items-center h-16 px-4 border-b border-gray-200 dark:border-gray-800">
+  <Link href="/" className="flex items-center gap-3">
+    {/* Contenedor del ícono: quitamos bg-blue-600 y el texto G */}
+    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+      <Image 
+        src="/icon.png" 
+        alt="Logo GComprobantes" 
+        width={40} 
+        height={40} 
+        className="object-contain"
+      />
+    </div>
+
+    {(isExpanded || isHovered || isMobileOpen) && (
+      <div className="flex flex-col">
+        {/* Cambié text-gray-900 por text-gray-500 (Gris) o usa text-green-600 (Verde) */}
+        <span className="text-lg font-bold text-gray-500 dark:text-gray-300">
+          GComprobantes
+        </span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          Garnier y Garnier
+        </span>
       </div>
+    )}
+  </Link>
+</div>
 
       {/* Navegación */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
