@@ -49,7 +49,7 @@ const AppHeader: React.FC = () => {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <div className="flex items-center">
-              <span className="text-xl font-bold text-blue-900 dark:text-white">GRecibos</span>
+              <span className="text-xl font-bold text-blue-900 dark:text-white">GComprobantes</span>
               <span className="hidden sm:inline-block ml-2 text-xs text-gray-400 dark:text-gray-500 border-l border-gray-300 dark:border-gray-600 pl-2">
                 Garnier y Garnier
               </span>
