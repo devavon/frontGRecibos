@@ -22,10 +22,10 @@ interface Company {
 }
 
 // Define la interfaz de Asignación de Permiso (Permission)
-interface Permission {
+/* interface Permission {
   userId: string;
   companyId: number;
-}
+} */
 
 
 // --- 1. COMPONENTE UserCompanyDashboard (Columna Derecha) ---
@@ -306,8 +306,8 @@ export default function AdminPermissionsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [assignedPermissions, setAssignedPermissions] = useState<Permission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+/*   const [assignedPermissions, setAssignedPermissions] = useState<Permission[]>([]);
+ */  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // --- 4. FUNCIÓN PARA SIMULAR LA CARGA DE DATOS DESDE LA API (MOCK) ---

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import {} from "next/navigation";
 import Swal from "sweetalert2";
 import { useAuth } from '../../context/AuthContext';
 import { EyeCloseIcon, EyeIcon, UserIcon, LockIcon } from "@/icons"; 
@@ -9,7 +9,7 @@ export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter();
+  /* const router = useRouter(); */
   const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -20,7 +20,7 @@ export default function SignInForm() {
        /*  router.push("/") */
        window.location.href = "/";;
       }
-    } catch (error) {
+    } catch {
       Swal.fire({ icon: "error", title: "Error", text: "Credenciales incorrectas" });
     }
   };
