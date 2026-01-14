@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 // **¡IMPORTANTE!** Lee la URL de tu backend de datos desde .env.local
 const BACKEND_DATA_URL = process.env.BACKEND_DATA_URL; 
 
-export async function GET(request: Request) {
+export async function GET() {
   if (!BACKEND_DATA_URL) {
     return NextResponse.json({ 
         success: false, 

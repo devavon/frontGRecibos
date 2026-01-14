@@ -223,37 +223,35 @@ export default function UserListDashboard() {
     const companyIdsAsNumbers = updatedIds.map(id => parseInt(id, 10));
 
     try {
-        // 🚨 CLAVE: Crear el payload COMPLETO 🚨
-        // El backend requiere name, email, y roleId, además de companyIds.
-        const payload = {
-            // Aseguramos que name y email no sean null/undefined
-            name: editingUser.name || '', 
-            email: editingUser.email || '', 
-            // Aseguramos que roleId es un número para que el backend lo pueda parsear
-            roleId: Number(editingUser.roleId),
-            companyIds: companyIdsAsNumbers
-        };
+    const payload = {
+    name: editingUser.name, 
+    email: editingUser.email, 
+    roleId: editingUser.roleId ? Number(editingUser.roleId) : 4, 
+    companyIds: companyIdsAsNumbers
+};
 
-        // LLAMADA A LA API DE ACTUALIZACIÓN - RUTA CORRECTA
-        // Usa la URL base y agrega /users/:id
-        const fullApiUrl = `${API_BASE_URL}/users/${editingUser.id}`; 
-        
-        const response = await axios.put(fullApiUrl, 
-            payload, // Enviamos el payload completo
-            { 
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                } 
-            }
-        );
+    // USAR ESTA LÍNEA:
+    const fullApiUrl = `${API_BASE_URL}/users/${parseInt(editingUser.id, 10)}`; 
+    
+    const response = await axios.put(fullApiUrl, payload, { 
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        } 
+    });
 
-        // El backend devuelve el objeto de usuario actualizado.
+       // El backend devuelve el objeto de usuario actualizado.
         const updatedUser = response.data as UserData;
         
-        // Actualizar el estado de la lista de usuarios con el objeto devuelto
+        // Actualizar el estado de la lista de usuarios
         setUsers(prevUsers => prevUsers.map(u => 
-            u.id === updatedUser.id ? updatedUser : u
+            String(u.id) === String(editingUser.id) 
+                ? { 
+                    ...u, 
+                    ...updatedUser, 
+                    allowedCompanyIds: updatedIds // Esto asegura que el Badge cambie al instante
+                  } 
+                : u
         ));
         
         handleCloseEditModal();
@@ -303,74 +301,60 @@ const getAuthToken = (): string | null => {
 };
 
 const handleSaveNewRole = async (userId: string, newRoleId: number) => {
-    setIsUpdatingRole(true); // Activa el spinner
-    
-    // Obtener el token de autenticación
+    setIsUpdatingRole(true);
     const token = getAuthToken(); 
-    
-    // Usamos el estado que contiene los datos del usuario seleccionado
     const userToUpdate = userToEditRole; 
 
-    // Verificación de datos críticos
     if (!userToUpdate || !token) { 
         console.error("Operación cancelada: Token o datos de usuario ausentes.");
         setIsUpdatingRole(false);
-        // Podrías agregar una alerta o redirigir al login si falta el token
         return;
     }
 
     try {
-        // 🚨 CONFIGURACIÓN DE LA LLAMADA A LA API 🚨
-        const API_URL = 'http://localhost:3000'; // Puerto del Backend confirmado
+        const API_URL = 'http://localhost:3000';
         
-        console.log(`Guardando rol ${newRoleId} para usuario ${userId} en el backend.`);
-
+        // 🚨 CORRECCIÓN CLAVE: Enviamos 'companyIds' (el array de permisos) 
+        // para no borrar las empresas que ya tiene permitidas el usuario.
         const response = await fetch(`${API_URL}/api/admin/users/${userId}`, { 
-            method: 'PUT', // Método PUT, según la Opción 1 de tu backend
+            method: 'PUT', 
             headers: {
                 'Content-Type': 'application/json',
-                // SOLUCIÓN DEL 401: Enviar el token en el formato Bearer
                 'Authorization': `Bearer ${token}` 
             },
-            // El cuerpo debe incluir name y email porque tu backend lo exige.
             body: JSON.stringify({ 
                 name: userToUpdate.name,
                 email: userToUpdate.email,
                 roleId: newRoleId,
-                // 🚨 CORRECCIÓN: Asegúrate de enviar el companyId si existe.
-                // Esto es necesario para que tu lógica de upsert/delete no falle.
-                companyId: userToUpdate.companyId || null, 
+                // Mapeamos los IDs actuales a números para que el backend los procese correctamente
+                companyIds: userToUpdate.allowedCompanyIds.map(id => parseInt(id))
             }),
         });
 
-        // Manejar la respuesta del servidor (cualquier código que no sea 2xx)
         if (!response.ok) {
-            // Intenta leer el mensaje de error del backend
             const errorText = await response.text();
-            let errorMessage = `Fallo en la actualización: ${response.status} ${response.statusText}`;
+            let errorMessage = `Fallo en la actualización: ${response.status}`;
             try {
                 const errorJson = JSON.parse(errorText);
                 errorMessage = errorJson.error || errorJson.message || errorMessage;
-            } catch {
-                // Si el error no es JSON (como el HTML del 404), usa el mensaje por defecto
-            }
+            } catch { /* no-op */ }
             throw new Error(errorMessage);
         }
         
-        // 🚨 ACTUALIZACIÓN DE ESTADO LOCAL (Frontend) 🚨
+        // Actualizamos el estado local para que la tabla refleje el cambio de rol inmediatamente
         setUsers(prevUsers => 
             prevUsers.map(u => 
-                u.id === userId 
-                    ? { ...u, roleId: newRoleId } // Cambia el rol del usuario editado
-                    : u
+                u.id === userId ? { ...u, roleId: newRoleId } : u
             )
         );
 
-        handleCloseEditRoleModal(); // Cierra el modal solo si el guardado fue exitoso
+        handleCloseEditRoleModal();
+        toast.success("Rol actualizado con éxito"); // Opcional si usas react-hot-toast
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error al actualizar el rol:", error);
-        // Aquí puedes mostrar una notificación de error al usuario (ej: Swal.fire)
+        // Si usas SweetAlert2 (Swal):
+        // Swal.fire('Error', error.message, 'error');
     } finally {
         setIsUpdatingRole(false);
     }
@@ -506,113 +490,89 @@ Swal.fire('Eliminado!', 'El usuario ha sido eliminado correctamente.', 'success'
     const dashboardTitle = "Gestión de Permisos de Empresa por Usuario"; 
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg max-w-6xl mx-auto my-8">
-            <div className="flex justify-between items-start mb-6">
-                <div className="flex flex-col">
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                        <Key className="w-6 h-6 mr-3 text-indigo-500" /> {dashboardTitle}
-                    </h1>
-                    <p className="mt-1 text-sm text-gray-600">
-                        Como Administrador, asigne qué empresas puede ver cada usuario. Se listan todos los usuarios de la base de datos (excluyendo su propia cuenta).
-                    </p>
-                </div>
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+            {/* Header */}
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200">
+                <span className="text-sm text-gray-600">
+                    {users.length} usuarios registrados
+                </span>
                 <button
                     onClick={handleOpenAddModal}
-                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition shadow-md shadow-green-600/50 transform hover:scale-[1.02] active:scale-[0.98]"
+                    className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition"
                 >
-                    <PlusCircle className="w-4 h-4 mr-2" />
-                    Agregar Usuario
+                    <PlusCircle className="w-4 h-4 mr-1.5" />
+                    Nuevo Usuario
                 </button>
             </div>
 
             {/* Spinner de Carga */}
             {loading && (
-                <div className="flex items-center justify-center p-8 bg-indigo-50 rounded-lg">
-                    <Loader2 className="w-6 h-6 animate-spin text-indigo-500 mr-2" />
-                    <span className="text-indigo-600 font-medium">Cargando usuarios y empresas...</span>
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-400 mr-2" />
+                    <span className="text-gray-500">Cargando usuarios...</span>
                 </div>
             )}
 
             {/* Mensaje de Error */}
             {error && !loading && (
-                <div className="flex items-center p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-100 border border-red-300" role="alert">
-                    <AlertTriangle className="w-5 h-5 mr-3" />
-                    <div>
-                        <span className="font-medium">Error:</span> {error}
-                    </div>
+                <div className="flex items-center p-4 m-4 text-sm text-red-700 rounded-md bg-red-50 border border-red-200" role="alert">
+                    <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span>{error}</span>
                 </div>
             )}
 
-            {/* Listado de Usuarios */}
+            {/* Tabla de Usuarios */}
             {!loading && !error && users.length > 0 && (
-                <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-md">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <Th icon={User} label="USUARIO" />
-                                <Th icon={Mail} label="EMAIL" />
-                                <Th icon={Key} label="Asignación Role" />
-                                <Th icon={Key} label="Role" />
-                                <Th icon={Key} label="Eliminar Usuaio" />
-                                <Th icon={Key} label="PERMISOS DE EMPRESA" />
-                                <Th icon={Pencil} label="ACCIONES" />
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Usuario</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Rol</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Permisos</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-100">
-                            {users.map((user) => (
-                                <tr key={user.id} className="hover:bg-indigo-50/50 transition">
-                                    <Td className="font-semibold text-gray-800">{user.name}</Td>
-                                    <Td>{user.email}</Td>
-                                    {/* Columna de Asignación Role (Tercera celda) */}
-                                    <Td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        {/* Botón para editar el Rol */}
-                                        <button
-                                            onClick={() => handleEditRoleClick(user)} // <-- Función para el cambio de ROL
-                                            className="px-3 py-1 bg-green-500 text-white rounded-full text-xs font-medium hover:bg-green-600 transition flex items-center shadow-md shadow-green-500/30"
-                                            title={`Cambiar Rol para ${user.name}`}
-                                        >
-                                            <Key className="w-3 h-3 mr-1" /> Rol
-                                        </button>
-                                    </Td>
-                                    <Td className={`font-medium ${user.roleId === 3 ? 'text-red-600' : 'text-indigo-600'}`}>
-                                           {getRoleName(user.roleId)}
-                                    </Td>
-                                    <Td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                        <button
-                                            // ANTES: onClick={() => handleDeleteUser(user.id)}
-                                            // AHORA: Convertimos el ID a número antes de enviarlo
-                                            onClick={() => handleDeleteUser(parseInt(user.id))} 
-                                            className="px-3 py-1 bg-red-500 text-white rounded-full text-xs font-medium hover:bg-red-600 transition flex items-center shadow-md shadow-red-500/30"
-                                            title={`Eliminar usuario ${user.name}`}
-                                        >
-                                            <Trash2 className="w-3 h-3 mr-1" /> Eliminar
-                                        </button>
-                                    </Td>
-                                    <Td>
-                                        <PermissionBadge 
-                                            count={user.roleId === 3 
-                                                ? companies?.length || 0 
-                                                : user.allowedCompanyIds?.length || 0
-                                            } 
-                                            total={companies?.length || 0} 
+                        <tbody className="divide-y divide-gray-100">
+                            {users.map((user, idx) => (
+                                <tr key={user.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/50 transition-colors`}>
+                                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{user.name}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
+                                    <td className="px-4 py-3">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                            user.roleId === 3 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                                        }`}>
+                                            {getRoleName(user.roleId)}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <PermissionBadge
+                                            count={user.roleId === 3 ? companies?.length || 0 : user.allowedCompanyIds?.length || 0}
+                                            total={companies?.length || 0}
                                         />
-                                    </Td>
-                                    <Td>
-                                        <button 
-                                            onClick={() => handleEditClick(user)}
-                                            className="px-3 py-1 bg-indigo-500 text-white rounded-full text-xs font-medium hover:bg-indigo-600 transition flex items-center shadow-md shadow-indigo-500/30"
-                                            title={`Editar permisos para ${user.name}`}
-                                        >
-                                            <Pencil className="w-3 h-3 mr-1" /> Editar Company 
-                                        </button>
-                                    </Td>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <button onClick={() => handleEditRoleClick(user)} className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded transition-colors" title="Cambiar rol">
+                                                <Key className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => handleEditClick(user)} className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded transition-colors" title="Editar permisos">
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => handleDeleteUser(parseInt(user.id))} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded transition-colors" title="Eliminar usuario">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
             )}
-            
+
+            {/* Estado vacío */}
             {!loading && !error && users.length === 0 && (
                 <div className="p-8 bg-yellow-50 rounded-lg border border-yellow-200 text-center">
                     <User className="w-6 h-6 text-yellow-500 mx-auto mb-3" />
