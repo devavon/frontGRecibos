@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* Desactivar Turbopack para usar webpack con @svgr/webpack */
+  turbopack: false,
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
