@@ -1,9 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import {} from "next/navigation";
 import Swal from "sweetalert2";
 import { useAuth } from '../../context/AuthContext';
-import { EyeCloseIcon, EyeIcon, UserIcon, LockIcon } from "@/icons"; 
+import { Eye, EyeOff, User, Lock } from "lucide-react"; 
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -77,7 +76,7 @@ export default function SignInForm() {
           <div className="flex flex-col">
             <label className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Correo</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#99bc39]"><UserIcon size={20} /></span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#99bc39]"><User size={20} /></span>
               <input
                 type="email"
                 placeholder="usuario@empresa.com"
@@ -91,7 +90,7 @@ export default function SignInForm() {
           <div className="flex flex-col">
             <label className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Contraseña</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#99bc39]"><LockIcon size={20} /></span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#99bc39]"><Lock size={20} /></span>
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
@@ -100,7 +99,7 @@ export default function SignInForm() {
                 className="w-full pl-12 pr-12 py-4 bg-[#f3f4f6] border-none rounded-2xl outline-none"
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                {showPassword ? <EyeIcon size={22} /> : <EyeCloseIcon size={22} />}
+                {showPassword ? <Eye size={22} /> : <EyeOff size={22} />}
               </button>
             </div>
           </div>
