@@ -1,7 +1,7 @@
 "use client";
 import Input from "@/components/form/input/InputField";
 import Button from "@/components/ui/button/Button";
-import { EyeCloseIcon, EyeIcon } from "@/icons";
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import axios from "axios";
@@ -103,9 +103,9 @@ export default function SignUpForm() {
                 className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
               >
                 {showPassword ? (
-                  <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
+                  <Eye className="text-gray-500 dark:text-gray-400" size={20} />
                 ) : (
-                  <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400" />
+                  <EyeOff className="text-gray-500 dark:text-gray-400" size={20} />
                 )}
               </span>
             </div>
