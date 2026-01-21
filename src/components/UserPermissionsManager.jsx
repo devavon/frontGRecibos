@@ -5,7 +5,7 @@ import axios from 'axios'; // ¡Asegúrate de tener Axios instalado!
 
 // === CONFIGURACIÓN DE ENDPOINTS ===
 // Usamos la URL base para el administrador
-const BASE_URL = 'http://localhost:3000/api/admin';
+const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/admin`;
 
 // --- COMPONENTE PRINCIPAL ---
 

@@ -7,7 +7,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext'; 
 import AdminPermissionsManager from './AdminPermissionsManager'; // <-- CORRECCIÓN: La ruta es relativa al mismo directorio
 
-const API_URL = 'http://localhost:3000'; // Asegúrate que coincida con tu backend
+const API_URL = process.env.NEXT_PUBLIC_API_URL; // Usa la variable de entorno
 
 export const AdminDashboard = () => {
     // Es mejor extraer el usuario del hook de autenticación si lo tienes disponible

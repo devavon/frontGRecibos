@@ -23,7 +23,7 @@ import Swal from 'sweetalert2'; // Se requiere SweetAlert2 para la confirmación
 import toast from 'react-hot-toast';
 
 // RUTAS DE API REALES
-const API_BASE_URL = 'http://localhost:3000/api/admin'; 
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/admin`; 
 
 // =========================================================
 // 1. TIPADO DE DATOS
@@ -312,11 +312,9 @@ const handleSaveNewRole = async (userId: string, newRoleId: number) => {
     }
 
     try {
-        const API_URL = 'http://localhost:3000';
-        
-        // 🚨 CORRECCIÓN CLAVE: Enviamos 'companyIds' (el array de permisos) 
+        // 🚨 CORRECCIÓN CLAVE: Enviamos 'companyIds' (el array de permisos)
         // para no borrar las empresas que ya tiene permitidas el usuario.
-        const response = await fetch(`${API_URL}/api/admin/users/${userId}`, { 
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${userId}`, { 
             method: 'PUT', 
             headers: {
                 'Content-Type': 'application/json',
@@ -386,9 +384,7 @@ const handleDeleteUser = async (userId: number) => {
 
     // 2. LLAMADA A LA API (DELETE)
     try {
-        const API_URL = 'http://localhost:3000';
-        
-        const response = await fetch(`${API_URL}/api/admin/users/${userId}`, { 
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${userId}`, {
             method: 'DELETE', 
             headers: {
                 'Authorization': `Bearer ${token}` 
