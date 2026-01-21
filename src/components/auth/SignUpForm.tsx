@@ -27,7 +27,7 @@ export default function SignUpForm() {
     }
 
     try {
-      await axios.post("http://localhost:3000/register", {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/register`, {
         name,
         email,
         password,

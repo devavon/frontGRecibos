@@ -9,7 +9,7 @@ import { User, Mail, Key, Loader2, AlertTriangle, ArrowDownUp, Building, Pencil,
 // =========================================================
 
 // URL BASE: El prefijo de tu API. Se usa: API_BASE_URL + /companies o /users/{id}
-const API_BASE_URL = 'http://localhost:3000/api/admin'; 
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/admin`; 
 
 // CLAVE DE AUTENTICACIÓN: Usada para simular el token de un Admin
 const API_KEY = 'mock-token-admin'; 

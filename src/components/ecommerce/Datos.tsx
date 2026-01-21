@@ -65,7 +65,7 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
 
   try {
     // Esta es la línea que te marca error en consola
-    const response = await fetch("http://localhost:3000/facturas", {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/facturas`, {
       method: 'GET',
       headers: { 
         "Authorization": `Bearer ${token}`, // El 403 suele ser porque el token está mal o expiró

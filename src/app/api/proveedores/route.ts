@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import axios from 'axios';
 
 // URL base de tu backend de Express
-const EXPRESS_API_URL = "http://localhost:3000";
+const EXPRESS_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export async function GET() {
     // Nota: Aunque el token se maneja en el frontend, mantenemos la estructura simple para evitar
