@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
-import { ChevronDownIcon, HorizontaLDots } from "../icons/index";
+import { ChevronDown, MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/context/AuthContext"; /* import { useAuth } from "@/hooks/useAuth"; */
 import { LayoutGrid, Plug2, TableProperties } from 'lucide-react';
 import Image from 'next/image';
@@ -283,7 +283,7 @@ if (!typedUser && !isSignInRoute) {
                       <>
                         <span className="ml-3 flex-1 text-left">{nav.name}</span>
                         {nav.subItems && (
-                          <ChevronDownIcon
+                          <ChevronDown
                             className={`w-4 h-4 transition-transform ${
                               openSubmenu?.index === idx ? "rotate-180" : ""
                             }`}
