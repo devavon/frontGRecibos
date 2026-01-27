@@ -1,10 +1,35 @@
 "use client";
 import { useSidebar } from "@/context/SidebarContext";
 import Link from "next/link";
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 const AppHeader: React.FC = () => {
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
+
+// 2. Creamos un estado para el nombre del usuario
+const [userName, setUserName] = useState<string>("Gestión de comprobantes");
+const [initial, setInitial] = useState<string>("A");
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser) as any;
+        
+        // Ahora usamos el 'name' que viene del backend. 
+        // Si por alguna razón no existe en la DB, usamos el correo como Plan B.
+        const name = parsedUser.name || parsedUser.email?.split('@')[0] || "Usuario";
+        
+        const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+        
+        setUserName(formattedName);
+        setInitial(formattedName.charAt(0).toUpperCase());
+      } catch (e) {
+        console.error("Error al leer el usuario:", e);
+      }
+    }
+  }, []);
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
@@ -57,13 +82,15 @@ const AppHeader: React.FC = () => {
           </Link>
         </div>
 
-        {/* Lado derecho: Info usuario */}
+        {/* Lado derecho: Info usuario ACTUALIZADO */}
         <div className="flex items-center gap-3">
-          <span className="hidden md:block text-sm text-gray-600 dark:text-gray-400">
-            Gestión de comprobantes
+          <span className="hidden md:block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {userName}
           </span>
-          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-            <span className="text-sm font-medium text-blue-600 dark:text-blue-300">A</span>
+          <div className="w-9 h-9 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center shadow-sm">
+            <span className="text-sm font-bold text-white">
+              {initial}
+            </span>
           </div>
         </div>
       </div>
