@@ -49,7 +49,7 @@ interface UserData {
 interface NewUserDataPayload {
     name: string;
     email: string;
-    password: string;
+    /* password: string; */
     companyId: string | null;
     roleId: number;
 }
@@ -634,7 +634,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ allCompanies, allRoles, onC
     const [formData, setFormData] = useState<NewUserDataPayload>({
         name: '',
         email: '',
-        password: '',
+        /* password: '', */
         companyId: defaultCompanyId,
         roleId: 4, // Default to 'Usuario Regular'
     });
@@ -649,21 +649,20 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ allCompanies, allRoles, onC
     };
 
     const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        setFormError(null);
+    e.preventDefault();
+    setFormError(null);
 
-        // Validación básica
-        if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
-            setFormError("Nombre, Email y Contraseña son campos obligatorios.");
-            return;
-        }
-        if (formData.password.length < 6) {
-            setFormError("La contraseña debe tener al menos 6 caracteres.");
-            return;
-        }
+    // ✅ Validación actualizada: Solo verificamos Nombre y Email
+    if (!formData.name.trim() || !formData.email.trim()) {
+        setFormError("El nombre y el correo electrónico son campos obligatorios.");
+        return;
+    }
 
-        onSave(formData);
-    };
+    // 💡 La validación de longitud de contraseña se elimina 
+    // porque el backend ahora genera una clave segura automáticamente.
+
+    onSave(formData);
+};
 
     return (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
@@ -712,7 +711,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ allCompanies, allRoles, onC
                     />
 
                     {/* Campo Contraseña */}
-                    <InputField 
+                   {/*  <InputField 
                         label="Contraseña (Mín. 6 caracteres)" 
                         name="password" 
                         type="password" 
@@ -721,7 +720,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ allCompanies, allRoles, onC
                         icon={Lock}
                         required
                         disabled={isSaving}
-                    />
+                    /> */}
                     
                     {/* Campo Compañía Principal */}
                     <div className="mb-4">
