@@ -84,7 +84,11 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
 
     // Verificamos que 'data' sea realmente lo que esperamos
     if (Array.isArray(data)) {
-      setFacturas(data);
+  // Ordenamos de la fecha más reciente a la más antigua
+  const facturasOrdenadas = data.sort((a, b) => {
+    return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+  });
+  setFacturas(facturasOrdenadas);
     } else {
       console.warn("Los datos recibidos no son un Array:", data);
       setFacturas([]); 

@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import Swal from "sweetalert2";
 import { useAuth } from '../../context/AuthContext';
 import { Eye, EyeOff, User, Lock } from "lucide-react"; 
+import Link from "next/link";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -16,6 +17,16 @@ export default function SignInForm() {
     try {
       const result = await login(email, password);
       if (result?.token) {
+        // --- AQUÍ ESTÁ EL TRUCO ---
+        // Extraemos el nombre que viene del backend (normalmente está en result.user.name)
+        // Si tu backend lo manda diferente, cámbialo aquí abajo
+        if (result.user && result.user.name) {
+          localStorage.setItem("user_name", result.user.name);
+        } else {
+          // Si por alguna razón no viene el nombre, ponemos un genérico para no dejarlo vacío
+          localStorage.setItem("user_name", "Usuario");
+        }
+        // ---------------------------
        /*  router.push("/") */
        window.location.href = "/";;
       }
@@ -98,6 +109,16 @@ export default function SignInForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-12 pr-12 py-4 bg-[#f3f4f6] border-none rounded-2xl outline-none"
               />
+              {/* NUEVO: Enlace de recuperar contraseña */}
+              <div className="flex justify-end mt-2">
+                <Link 
+                  href="/forgot-password" 
+                  className="text-[12px] font-bold text-[#99bc39] hover:text-[#86a532] transition-colors uppercase tracking-wider mr-1"
+                >
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
+
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
                 {showPassword ? <Eye size={22} /> : <EyeOff size={22} />}
               </button>
