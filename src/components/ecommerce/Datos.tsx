@@ -318,9 +318,10 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
                   onChange={handleSelectChange(setFilterMoneda)}
                 >
                   <option value="">Todas</option>
-                  <option value="USD">USD</option>
                   <option value="$">$</option>
                   <option value="¢">¢</option>
+                  <option value="USD">USD</option>
+                  <option value="Colones">Colones</option>
                 </select>
               </div>
               <div>
