@@ -75,10 +75,18 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
 
     // Si la respuesta no es 200 OK (es 400 o 403 como en tus fotos)
     if (!response.ok) {
-      console.error(`Error de respuesta: ${response.status}`);
-      setFacturas([]); // IMPORTANTE: Seteamos lista vacía para que no explote el .filter
-      return; 
-    }
+            console.error(`Error de respuesta: ${response.status}`);
+            
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('token'); 
+                // Usamos la ruta que confirmaste en el AppSidebar
+                window.location.href = '/signin'; 
+                return;
+            }
+
+            setFacturas([]); 
+            return;
+        }
 
     const data = await response.json();
 
@@ -310,9 +318,10 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
                   onChange={handleSelectChange(setFilterMoneda)}
                 >
                   <option value="">Todas</option>
-                  <option value="USD">USD</option>
                   <option value="$">$</option>
                   <option value="¢">¢</option>
+                  <option value="USD">USD</option>
+                  <option value="Colones">Colones</option>
                 </select>
               </div>
               <div>
