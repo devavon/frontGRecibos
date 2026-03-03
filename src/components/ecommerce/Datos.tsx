@@ -427,7 +427,8 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
                 {currentFacturas.map((factura, idx) => (
                   <tr key={factura.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/50 transition-colors`}>
                     <td className="px-4 py-3 text-sm text-gray-900 font-medium">{factura.proveedor}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">{factura.empresa}</td>
+                    {/* <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">{factura.empresa}</td> */}
+                    <td className="px-4 py-3 text-sm text-gray-600 whitespace-normal break-words">{factura.empresa}</td>
                     <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                       {new Date(factura.fecha).toLocaleDateString('es-CR')}
                     </td>

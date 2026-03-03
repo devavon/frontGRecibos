@@ -10,8 +10,7 @@ export default function ForgotPasswordPage() {
  const handleResetRequest = async (e: React.FormEvent) => {
   e.preventDefault();
   try {
-    // Cambia esto:
-  const response = await fetch("http://localhost:3000/api/forgot-password", {// Cambia esto directo
+ const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/forgot-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email })
