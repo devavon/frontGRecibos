@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 
+import emailjs from '@emailjs/browser';
+
 // --- INTERFACES ---
 interface Factura {
   id: number;
@@ -217,6 +219,33 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
     URL.revokeObjectURL(url);
     showAlert("success", "Exportado", "Archivo CSV descargado.");
   };
+
+const enviarComprobante = (factura: any, emailDestino: string) => {
+  // Aseguramos que los valores existan para evitar el error 400
+  const templateParams = {
+    to_email: emailDestino || 'sin-email@test.com',
+    proveedor: factura?.proveedor || 'Proveedor Desconocido',
+    monto: factura?.monto ? `${factura.moneda || '$'} ${factura.monto}` : '0.00',
+    url_pdf: factura?.documentoUrl || '#'
+  };
+
+  console.log("Enviando estos datos:", templateParams); // Esto te ayudará a ver qué falla
+
+  emailjs.send(
+    'default_service',
+    'template_in0bron', 
+    templateParams, 
+    'pbba18MHyczKyiRGD'
+  )
+  .then((response) => {
+    console.log('¡ÉXITO!', response.status, response.text);
+    showAlert("success", "Éxito", "Comprobante enviado correctamente");
+  })
+  .catch((err) => {
+    console.error('ERROR DETALLADO:', err);
+    showAlert("error", "Error", "Error 400: Datos de plantilla inválidos.");
+  });
+};
 
   // Estilos de input reutilizables
   const inputClass = "w-full h-10 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all";
@@ -442,23 +471,48 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
                       {factura.concepto}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {factura.documentoUrl ? (
-                        <a
-                          href={factura.documentoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors"
-                          title="Ver documento"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </a>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
+  <div className="flex items-center justify-center gap-2">
+    {/* Botón de Ver (El que ya tienes) */}
+    {factura.documentoUrl ? (
+      <>
+        <a
+          href={factura.documentoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors"
+          title="Ver documento"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        </a>
+
+        {/* BOTÓN NUEVO: Enviar por correo */}
+        <button
+            onClick={() => {
+              // 1. Pedimos el correo al usuario
+              const emailDestino = prompt("Ingrese el correo del destinatario:", factura.email || "");
+              
+              // 2. Si el usuario escribió algo y dio "Aceptar"
+              if (emailDestino) {
+                // Llamamos a la función real que conecta con el servidor
+                enviarComprobante(factura, emailDestino);
+              }
+            }}
+            className="inline-flex items-center justify-center w-8 h-8 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-full transition-colors"
+            title="Enviar por correo"
+           >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </button>
+      </>
+    ) : (
+      <span className="text-gray-300">—</span>
+    )}
+  </div>
+</td>
                   </tr>
                 ))}
               </tbody>
