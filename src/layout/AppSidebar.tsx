@@ -111,6 +111,13 @@ const AppSidebar: React.FC = () => {
       name: "Inicio",
       path: "/",
     },
+    
+{
+    icon: <SettingsIcon />,
+    name: "Cambiar contraseña",
+    path: "/change-password",
+  },
+
   ];
 
   // 3. Si el usuario es administrador, agregamos el menú de Administración

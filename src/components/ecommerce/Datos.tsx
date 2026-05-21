@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Swal from 'sweetalert2';
 
-import emailjs from '@emailjs/browser';
+/* import emailjs from '@emailjs/browser'; */
 
 // --- INTERFACES ---
 interface Factura {
@@ -220,31 +221,66 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
     showAlert("success", "Exportado", "Archivo CSV descargado.");
   };
 
-const enviarComprobante = (factura: any, emailDestino: string) => {
-  // Aseguramos que los valores existan para evitar el error 400
-  const templateParams = {
-    to_email: emailDestino || 'sin-email@test.com',
-    proveedor: factura?.proveedor || 'Proveedor Desconocido',
-    monto: factura?.monto ? `${factura.moneda || '$'} ${factura.monto}` : '0.00',
-    url_pdf: factura?.documentoUrl || '#'
-  };
+const enviarComprobante = async (
+  factura: any,
+  emailDestino: string,
+  asunto: string,
+  mensaje: string
+) => {
+  const token = localStorage.getItem("token");
 
-  console.log("Enviando estos datos:", templateParams); // Esto te ayudará a ver qué falla
-
-  emailjs.send(
-    'default_service',
-    'template_in0bron', 
-    templateParams, 
-    'pbba18MHyczKyiRGD'
-  )
-  .then((response) => {
-    console.log('¡ÉXITO!', response.status, response.text);
-    showAlert("success", "Éxito", "Comprobante enviado correctamente");
-  })
-  .catch((err) => {
-    console.error('ERROR DETALLADO:', err);
-    showAlert("error", "Error", "Error 400: Datos de plantilla inválidos.");
+  Swal.fire({
+    title: 'Enviando...',
+    text: 'Estamos procesando el correo con SendGrid',
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading();
+    }
   });
+
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/enviar-comprobante`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          to: emailDestino,
+          facturaId: factura.id,
+          asunto,
+          mensajePersonalizado: mensaje,
+        }),
+      }
+    );
+
+    let data: any;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('La respuesta del servidor no es válida');
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error || 'Error al enviar el comprobante');
+    }
+
+    Swal.fire(
+      '¡Logrado!',
+      'El comprobante se envió correctamente.',
+      'success'
+    );
+
+  } catch (err: any) {
+    console.error('ERROR:', err);
+    Swal.fire(
+      'Vaya...',
+      err.message || 'Error de conexión',
+      'error'
+    );
+  }
 };
 
   // Estilos de input reutilizables
@@ -449,7 +485,7 @@ const enviarComprobante = (factura: any, emailDestino: string) => {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Banco</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Referencia</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Concepto</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wide">Doc</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wide">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -489,24 +525,59 @@ const enviarComprobante = (factura: any, emailDestino: string) => {
         </a>
 
         {/* BOTÓN NUEVO: Enviar por correo */}
-        <button
-            onClick={() => {
-              // 1. Pedimos el correo al usuario
-              const emailDestino = prompt("Ingrese el correo del destinatario:", factura.email || "");
-              
-              // 2. Si el usuario escribió algo y dio "Aceptar"
-              if (emailDestino) {
-                // Llamamos a la función real que conecta con el servidor
-                enviarComprobante(factura, emailDestino);
-              }
-            }}
-            className="inline-flex items-center justify-center w-8 h-8 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-full transition-colors"
-            title="Enviar por correo"
-           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </button>
+        {/* BOTÓN: Enviar por correo */}
+<button
+  onClick={async () => {
+    // 1. Pedimos Correo, Asunto y Mensaje en una sola alerta
+    const { value: formValues } = await Swal.fire({
+      title: 'Enviar Comprobante',
+      html: `
+        <div style="text-align: left; margin-bottom: 10px;">
+          <label style="font-weight: bold;">Asunto:</label>
+          <input id="swal-asunto" class="swal2-input" placeholder="Ej: Comprobante de pago" value="Comprobante de Pago - ${factura.proveedor}">
+        </div>
+        <div style="text-align: left; margin-bottom: 10px;">
+          <label style="font-weight: bold;">Correo del destinatario:</label>
+          <input id="swal-email" class="swal2-input" placeholder="ejemplo@correo.com" value="${factura.email || 'EnlaceBCT@corporacionbct.com'}">
+        </div>
+        <div style="text-align: left;">
+          <label style="font-weight: bold;">Mensaje:</label>
+          <textarea id="swal-mensaje" class="swal2-textarea" placeholder="Escriba un mensaje opcional...">Buen día, adjunto envío el comprobante de pago solicitado.</textarea>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Enviar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#059669',
+      preConfirm: () => {
+        // Validamos que el correo no esté vacío
+        const email = (document.getElementById('swal-email') as HTMLInputElement).value;
+        if (!email) {
+          Swal.showValidationMessage('El correo es obligatorio');
+          return false;
+        }
+        return {
+          email: email,
+          asunto: (document.getElementById('swal-asunto') as HTMLInputElement).value,
+          mensaje: (document.getElementById('swal-mensaje') as HTMLTextAreaElement).value
+        };
+      }
+    });
+
+    // 2. Si el usuario llenó los datos y dio "Enviar"
+    if (formValues) {
+      // Llamamos a la función real pasando los nuevos datos
+      enviarComprobante(factura, formValues.email, formValues.asunto, formValues.mensaje);
+    }
+  }}
+  className="inline-flex items-center justify-center w-8 h-8 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-full transition-colors"
+  title="Enviar por correo"
+>
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+  </svg>
+</button>
       </>
     ) : (
       <span className="text-gray-300">—</span>
