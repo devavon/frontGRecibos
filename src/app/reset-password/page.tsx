@@ -12,7 +12,8 @@ export default function ResetPasswordPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:3000/api/update-password", {
+      /* const response = await fetch("http://localhost:3000/api/update-password", { */
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/update-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, newPassword: password }),

@@ -16,6 +16,11 @@ export default function SignInForm() {
     e.preventDefault();
     try {
       const result = await login(email, password);
+      if (result?.requirePasswordChange) {
+        window.location.href = `/reset-password?userId=${result.userId}`;
+        return;
+      }
+
       if (result?.token) {
         // --- AQUÍ ESTÁ EL TRUCO ---
         // Extraemos el nombre que viene del backend (normalmente está en result.user.name)
