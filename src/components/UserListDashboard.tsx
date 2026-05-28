@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 // Iconos de lucide-react
-import { 
-    User, Mail, Key, Loader2, AlertTriangle, ArrowDownUp, Building, Pencil, X, Save, PlusCircle, Lock 
+import {
+    User, Mail, Key, Loader2, AlertTriangle, ArrowDownUp, Building, Pencil, X, Save, PlusCircle, Lock, Send
 } from 'lucide-react';
 
 // =========================================================
@@ -417,6 +417,52 @@ Swal.fire('Eliminado!', 'El usuario ha sido eliminado correctamente.', 'success'
     }
 };
 
+const handleResendInvite = async (user: UserData) => {
+    const confirmation = await Swal.fire({
+        title: '¿Reenviar invitación?',
+        text: `Se generará una nueva contraseña temporal y se enviará un correo a ${user.email}.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#aaa',
+        confirmButtonText: 'Sí, reenviar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmation.isConfirmed) return;
+
+    const authToken = getAuthToken();
+    if (!authToken) {
+        Swal.fire('Error', 'No estás autenticado.', 'error');
+        return;
+    }
+
+    try {
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${user.id}/resend-invite`;
+        console.log('[RESEND] Enviando a:', url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${authToken}` },
+        });
+
+        console.log('[RESEND] Status:', response.status);
+
+        if (!response.ok) {
+            let errorMsg = `Error ${response.status}`;
+            try {
+                const data = await response.json();
+                errorMsg = data.error || data.details || errorMsg;
+            } catch { /* response no es JSON */ }
+            throw new Error(errorMsg);
+        }
+
+        Swal.fire('Enviado', `Invitación reenviada a ${user.email}.`, 'success');
+    } catch (error) {
+        console.error("[RESEND] Error completo:", error);
+        Swal.fire('Error', (error as Error).message, 'error');
+    }
+};
 
  /*    const handleCloseAddModal = () => {
         setIsAddModalOpen(false);
@@ -448,7 +494,9 @@ Swal.fire('Eliminado!', 'El usuario ha sido eliminado correctamente.', 'success'
                 const updatedUsers = [...prevUsers, createdUser].sort((a, b) => a.name.localeCompare(b.name));
                 return updatedUsers;
             });
-            
+
+            Swal.fire('Usuario creado', `Se envió un correo con las credenciales a ${createdUser.email}.`, 'success');
+
         } catch (err: any) {
             console.error("Error al crear usuario:", err);
             // El backend devuelve el mensaje de error de validación o duplicado
@@ -555,6 +603,9 @@ Swal.fire('Eliminado!', 'El usuario ha sido eliminado correctamente.', 'success'
                                             </button>
                                             <button onClick={() => handleEditClick(user)} className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded transition-colors" title="Editar permisos">
                                                 <Pencil className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => handleResendInvite(user)} className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-100 rounded transition-colors" title="Reenviar invitación">
+                                                <Send className="w-4 h-4" />
                                             </button>
                                             <button onClick={() => handleDeleteUser(parseInt(user.id))} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded transition-colors" title="Eliminar usuario">
                                                 <Trash2 className="w-4 h-4" />
