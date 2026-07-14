@@ -108,9 +108,15 @@ const AppSidebar: React.FC = () => {
   let navItems: NavItem[] = [
     {
       icon: <HomeIcon />,
-      name: "Inicio",
+      name: "GComprobantes",
       path: "/",
     },
+
+    {
+  icon: <DocumentIcon />,
+  name: "Recibos Pago CxC",
+  path: "/pagos-cxc",
+},
     
 {
     icon: <SettingsIcon />,
