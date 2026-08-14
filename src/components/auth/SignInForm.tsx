@@ -16,6 +16,7 @@ export default function SignInForm() {
     e.preventDefault();
     try {
       const result = await login(email, password);
+      console.log("LOGIN RESULT:", result);
       if (result?.requirePasswordChange) {
         window.location.href = `/reset-password?userId=${result.userId}`;
         return;

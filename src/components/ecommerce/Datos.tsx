@@ -507,81 +507,81 @@ const enviarComprobante = async (
                       {factura.concepto}
                     </td>
                     <td className="px-4 py-3 text-center">
-  <div className="flex items-center justify-center gap-2">
-    {/* Botón de Ver (El que ya tienes) */}
-    {factura.documentoUrl ? (
-      <>
-        <a
-          href={factura.documentoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors"
-          title="Ver documento"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-        </a>
-        {/* BOTÓN: Enviar por correo */}
-<button
-  onClick={async () => {
-    // 1. Pedimos Correo, Asunto y Mensaje en una sola alerta
-    const { value: formValues } = await Swal.fire({
-      title: 'Enviar Comprobante',
-      html: `
-        <div style="text-align: left; margin-bottom: 10px;">
-          <label style="font-weight: bold;">Asunto:</label>
-          <input id="swal-asunto" class="swal2-input" placeholder="Ej: Comprobante de pago" value="Comprobante de Pago - ${factura.proveedor}">
-        </div>
-        <div style="text-align: left; margin-bottom: 10px;">
-          <label style="font-weight: bold;">Correo del destinatario:</label>
-          <input id="swal-email" class="swal2-input" placeholder="ejemplo@correo.com" value="${factura.email || 'EnlaceBCT@corporacionbct.com'}">
-        </div>
-        <div style="text-align: left;">
-          <label style="font-weight: bold;">Mensaje:</label>
-          <textarea id="swal-mensaje" class="swal2-textarea" placeholder="Escriba un mensaje opcional...">Buen día, adjunto envío el comprobante de pago solicitado.</textarea>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Enviar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#059669',
-      preConfirm: () => {
-        // Validamos que el correo no esté vacío
-        const email = (document.getElementById('swal-email') as HTMLInputElement).value;
-        if (!email) {
-          Swal.showValidationMessage('El correo es obligatorio');
-          return false;
-        }
-        return {
-          email: email,
-          asunto: (document.getElementById('swal-asunto') as HTMLInputElement).value,
-          mensaje: (document.getElementById('swal-mensaje') as HTMLTextAreaElement).value
-        };
-      }
-    });
+                      <div className="flex items-center justify-center gap-2">
+                        {/* Botón de Ver (El que ya tienes) */}
+                        {factura.documentoUrl ? (
+                          <>
+                            <a
+                              href={factura.documentoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors"
+                              title="Ver documento"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </a>
+                            {/* BOTÓN: Enviar por correo */}
+                            <button
+                              onClick={async () => {
+                                // 1. Pedimos Correo, Asunto y Mensaje en una sola alerta
+                                const { value: formValues } = await Swal.fire({
+                                  title: 'Enviar Comprobante',
+                                  html: `
+                                    <div style="text-align: left; margin-bottom: 10px;">
+                                      <label style="font-weight: bold;">Asunto:</label>
+                                      <input id="swal-asunto" class="swal2-input" placeholder="Ej: Comprobante de pago" value="Comprobante de Pago - ${factura.proveedor}">
+                                    </div>
+                                    <div style="text-align: left; margin-bottom: 10px;">
+                                      <label style="font-weight: bold;">Correo del destinatario:</label>
+                                      <input id="swal-email" class="swal2-input" placeholder="ejemplo@correo.com" value="${factura.email || 'EnlaceBCT@corporacionbct.com'}">
+                                    </div>
+                                    <div style="text-align: left;">
+                                      <label style="font-weight: bold;">Mensaje:</label>
+                                      <textarea id="swal-mensaje" class="swal2-textarea" placeholder="Escriba un mensaje opcional...">Buen día, adjunto envío el comprobante de pago solicitado.</textarea>
+                                    </div>
+                                  `,
+                                  focusConfirm: false,
+                                  showCancelButton: true,
+                                  confirmButtonText: 'Enviar',
+                                  cancelButtonText: 'Cancelar',
+                                  confirmButtonColor: '#059669',
+                                  preConfirm: () => {
+                                    // Validamos que el correo no esté vacío
+                                    const email = (document.getElementById('swal-email') as HTMLInputElement).value;
+                                    if (!email) {
+                                      Swal.showValidationMessage('El correo es obligatorio');
+                                      return false;
+                                    }
+                                    return {
+                                      email: email,
+                                      asunto: (document.getElementById('swal-asunto') as HTMLInputElement).value,
+                                      mensaje: (document.getElementById('swal-mensaje') as HTMLTextAreaElement).value
+                                    };
+                                  }
+                                });
 
-    // 2. Si el usuario llenó los datos y dio "Enviar"
-    if (formValues) {
-      // Llamamos a la función real pasando los nuevos datos
-      enviarComprobante(factura, formValues.email, formValues.asunto, formValues.mensaje);
-    }
-  }}
-  className="inline-flex items-center justify-center w-8 h-8 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-full transition-colors"
-  title="Enviar por correo"
->
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-  </svg>
-</button>
-      </>
-    ) : (
-      <span className="text-gray-300">—</span>
-    )}
-  </div>
-</td>
+                                // 2. Si el usuario llenó los datos y dio "Enviar"
+                                if (formValues) {
+                                  // Llamamos a la función real pasando los nuevos datos
+                                  enviarComprobante(factura, formValues.email, formValues.asunto, formValues.mensaje);
+                                }
+                              }}
+                              className="inline-flex items-center justify-center w-8 h-8 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-full transition-colors"
+                              title="Enviar por correo"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
