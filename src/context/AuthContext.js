@@ -49,7 +49,9 @@ export const AuthProvider = ({ children }) => {
 
     // Función de Login
     const login = async (email, password) => {
-        setIsLoading(true);
+        // No se usa el isLoading global aquí: ese estado reemplaza toda la app
+        // por la pantalla de carga y desmontaría el formulario de login (se
+        // perdía el mensaje de error). El formulario maneja su propio estado.
         try {
             const fullUrl = `${API_URL}/api/login`;
             const response = await axios.post(fullUrl, { email, password }); 
@@ -76,9 +78,8 @@ export const AuthProvider = ({ children }) => {
             
             return response.data;
         } catch (error) {
-            // ... tu código de error se queda igual
-        } finally {
-            setIsLoading(false);
+            // El formulario muestra el error en línea (credenciales o conexión)
+            return { error: true, status: error?.response?.status ?? null };
         }
     };
 
@@ -111,7 +112,14 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={contextValue}>
-            {isLoading ? <div className="p-8 text-center text-gray-500">Verificando sesión...</div> : children}
+            {isLoading ? (
+                <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--gp-body-bg)' }}>
+                    <div className="gp-loading-block">
+                        <span className="gp-spinner" />
+                        Verificando sesión...
+                    </div>
+                </div>
+            ) : children}
         </AuthContext.Provider>
     );
 };

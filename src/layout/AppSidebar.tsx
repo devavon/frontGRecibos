@@ -1,349 +1,227 @@
 "use client";
-import React, { useEffect, useRef, useState, useCallback } from "react";
+
+// Sidebar — mismo diseño que Gpeople: fondo blanco, grupos en acordeón con
+// etiqueta en mayúsculas, ítem activo con degradado verde suave y barra
+// lateral verde Garnier, y pie con la marca + versión.
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
-import { useAuth } from "@/context/AuthContext"; /* import { useAuth } from "@/hooks/useAuth"; */
-import { LayoutGrid, Plug2, TableProperties } from 'lucide-react';
-import Image from 'next/image';
-
-// Iconos simples en SVG
-const HomeIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-  </svg>
-);
-
-const DocumentIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-  </svg>
-);
-
-const UsersIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-  </svg>
-);
-
-const SettingsIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
-
-const LogoutIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-  </svg>
-);
+import { useAuth } from "@/context/AuthContext";
+import { ChevronDown, KeyRound, Receipt, Shield, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 type UserType = {
-  id: number;
+  id?: number;
+  userId?: number;
   email: string;
   roleId: number;
   name: string;
 };
 
-type NavItem = {
-  name: string;
-  icon: React.ReactNode;
-  path?: string;
-  pro?: boolean;
-  subItems?: { 
-    name: string; 
-    path: string; 
-    pro?: boolean; // <--- Esto es lo que permite que no de error abajo
-  }[];
-};
+type NavItem = { to: string; icon: LucideIcon; label: string; adminOnly?: boolean };
+type NavGroup = { label: string; items: NavItem[] };
 
-
-// ----------------------------------------------------------------------
-// DEFINICIÓN DE ELEMENTOS BASE (VISTO POR TODOS)
-// ----------------------------------------------------------------------
-const defaultNavItems: NavItem[] = [
-    {
-        icon: <LayoutGrid />,
-        name: "Página principal",
-        subItems: [{ name: "Facturas", path: "/", pro: false }],
-    },
-    {
-        icon: <Plug2 />,
-        name: "Authentication",
-        subItems: [
-            // SOLO MANTENEMOS SIGN IN
-            { name: "Sign In", path: "/signin", pro: false },
-        ],
-    },
-    {
-        icon: <TableProperties />, 
-        name: "Dashboard Admin",
-        subItems: [
-            { name: "Users", path: "/security-tests" }, 
-        ],
-    },
+const navGroups: NavGroup[] = [
+  {
+    label: "GENERAL",
+    items: [{ to: "/", icon: Receipt, label: "Comprobantes" }],
+  },
+  {
+    label: "ADMINISTRACIÓN",
+    items: [{ to: "/users", icon: Shield, label: "Usuarios", adminOnly: true }],
+  },
+  {
+    label: "MI CUENTA",
+    items: [{ to: "/change-password", icon: KeyRound, label: "Cambiar contraseña" }],
+  },
 ];
 
+const APP_VERSION = "v3.0.1";
+const LS_KEY = "gcomprobantes_sidebar_abiertos";
+
+const isItemActive = (to: string, pathname: string) =>
+  to === "/" ? pathname === "/" : pathname.startsWith(to);
+
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
-  const pathname = usePathname();
+  const { isMobileOpen, toggleMobileSidebar } = useSidebar();
+  const pathname = usePathname() || "/";
   const router = useRouter();
+  const { user, isLoading } = useAuth() as { user: UserType | null; isLoading: boolean };
 
- /*  const authResult = useAuth() as any || { user: null, loading: true };
-  const { user, loading } = authResult; */
-  // Traemos user, isLoading y nuestra nueva función logout
-// 1. Extraemos todo del contexto de una vez
-  const { user, isLoading, logout } = useAuth() as any;
+  const isUserAdmin = user?.roleId === 3;
 
-  // 2. Asignamos los tipos una sola vez para evitar duplicados
-  const typedUser = user as UserType | null;
-  const typedLoading = isLoading as boolean;
-
-
-  const isUserAdmin = typedUser?.roleId === 3;
-  // Menú principal - visible para todos los usuarios
-  // 2. Definimos navItems como "let" para poder modificarla
-  let navItems: NavItem[] = [
-    {
-      icon: <HomeIcon />,
-      name: "Inicio",
-      path: "/",
-    },
-    
-{
-    icon: <SettingsIcon />,
-    name: "Cambiar contraseña",
-    path: "/change-password",
-  },
-
-  ];
-
-  // 3. Si el usuario es administrador, agregamos el menú de Administración
-  if (isUserAdmin) {
-    navItems.push({
-      icon: <UsersIcon />,
-      name: "Administración",
-      subItems: [
-        { name: "Usuarios", path: "/users" },
-      ],
-    });
-  }
-
-  // Lógica de redirección
+  // Guardia de sesión (misma lógica que antes): sin usuario → /login
   useEffect(() => {
-    if (typedLoading) return;
-
-    /* const isSignInRoute = pathname === "/signin";
-
-    if (!typedUser && !isSignInRoute) {
-      router.replace("/signin");
+    if (isLoading) return;
+    const isSignInRoute = pathname === "/login";
+    if (!user && !isSignInRoute) {
+      router.replace("/login");
       return;
-    } */
-   const isSignInRoute = pathname === "/login";
-
-if (!typedUser && !isSignInRoute) {
-  router.replace("/login");
-  return;
-}
-
-    if (typedUser && isSignInRoute) {
+    }
+    if (user && isSignInRoute) {
       router.replace("/");
-      return;
     }
-  }, [typedLoading, typedUser, pathname, router]);
+  }, [isLoading, user, pathname, router]);
 
-  // Estado del acordeón
-  const [openSubmenu, setOpenSubmenu] = useState<{ index: number } | null>(null);
-  const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
-  const subMenuRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const gruposVisibles = navGroups
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.adminOnly || isUserAdmin) }))
+    .filter((g) => g.items.length > 0);
 
-  const isActive = useCallback((path: string) => path === pathname, [pathname]);
+  // Acordeón: grupos abiertos (persistido). Por defecto todos abiertos.
+  const [abiertos, setAbiertos] = useState<Set<string>>(
+    () => new Set(navGroups.map((g) => g.label))
+  );
 
   useEffect(() => {
-    let matched = false;
-    navItems.forEach((nav, idx) => {
-      if (nav.subItems) {
-        nav.subItems.forEach((sub) => {
-          if (isActive(sub.path)) {
-            setOpenSubmenu({ index: idx });
-            matched = true;
-          }
-        });
-      } else if (nav.path && isActive(nav.path)) {
-        matched = true;
+    try {
+      const guardado = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+      if (Array.isArray(guardado)) setAbiertos(new Set(guardado));
+    } catch {
+      /* estado corrupto → default */
+    }
+  }, []);
+
+  // El grupo de la ruta actual se abre solo
+  useEffect(() => {
+    const grupoActivo = navGroups.find((g) => g.items.some((i) => isItemActive(i.to, pathname)));
+    if (grupoActivo) {
+      setAbiertos((prev) => (prev.has(grupoActivo.label) ? prev : new Set([...prev, grupoActivo.label])));
+    }
+  }, [pathname]);
+
+  const toggle = (label: string) =>
+    setAbiertos((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify([...next]));
+      } catch {
+        /* sin storage */
       }
+      return next;
     });
-    if (!matched) setOpenSubmenu(null);
-  }, [pathname, isActive]);
 
-  useEffect(() => {
-    if (openSubmenu !== null) {
-      const idx = openSubmenu.index;
-      const el = subMenuRefs.current[idx];
-      if (el) {
-        setSubMenuHeight((prev) => ({ ...prev, [idx]: el.scrollHeight ?? 0 }));
-      }
-    }
-  }, [openSubmenu]);
-
-  const handleSubmenuToggle = (index: number) => {
-    setOpenSubmenu((prev) => (prev && prev.index === index ? null : { index }));
+  const closeMobile = () => {
+    if (isMobileOpen) toggleMobileSidebar();
   };
-
-  /* const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.replace("/signin");
-  }; */
-  const handleLogout = () => {
-  // Esta función 'logout' ya tiene programado borrar Cookies, 
-  // LocalStorage y redirigirte a /login automáticamente
-  logout(); 
-};
 
   return (
     <aside
-      className={`fixed top-0 left-0 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-50 transition-all duration-300 ease-in-out flex flex-col ${
-        isExpanded || isHovered || isMobileOpen ? "w-64" : "w-20"
-      } ${isMobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
-      onMouseEnter={() => !isExpanded && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className={`
+        fixed inset-y-0 left-0 z-40 w-[260px] shrink-0 border-r overflow-y-auto flex flex-col
+        transform transition-transform duration-200 ease-in-out
+        lg:relative lg:translate-x-0 lg:w-[240px] lg:z-0
+        ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+      `}
+      style={{ backgroundColor: "var(--gp-sidebar-bg)", borderColor: "var(--gp-border)", top: 0 }}
     >
-     {/* Logo en sidebar */}
-<div className="flex items-center h-16 px-4 border-b border-gray-200 dark:border-gray-800">
-  <Link href="/" className="flex items-center gap-3">
-    {/* Contenedor del ícono: quitamos bg-blue-600 y el texto G */}
-    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-      <Image 
-        src="/icon.png" 
-        alt="Logo GComprobantes" 
-        width={40} 
-        height={40} 
-        className="object-contain"
-      />
-    </div>
-
-    {(isExpanded || isHovered || isMobileOpen) && (
-      <div className="flex flex-col">
-        {/* Cambié text-gray-900 por text-gray-500 (Gris) o usa text-green-600 (Verde) */}
-        <span className="text-lg font-bold text-gray-500 dark:text-gray-300">
-          GComprobantes
+      {/* Encabezado móvil */}
+      <div
+        className="flex items-center justify-between p-3 lg:hidden border-b"
+        style={{ borderColor: "var(--gp-border)" }}
+      >
+        <span className="text-sm font-semibold gp-font-head" style={{ color: "var(--gp-green-text)" }}>
+          Menú
         </span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          Garnier y Garnier
-        </span>
+        <button onClick={closeMobile} className="p-1 rounded-md hover:bg-gray-100 transition" aria-label="Cerrar menú">
+          <X size={20} style={{ color: "var(--gp-text-secondary)" }} />
+        </button>
       </div>
-    )}
-  </Link>
-</div>
 
-      {/* Navegación */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
-        <div className="mb-2">
-          <span className={`text-xs font-semibold uppercase text-gray-400 dark:text-gray-500 ${
-            !isExpanded && !isHovered && !isMobileOpen ? "hidden" : "block px-3"
-          }`}>
-            Menú
-          </span>
-        </div>
-
-        <ul className="space-y-1">
-          {navItems.map((nav, idx) => (
-            <li key={nav.name}>
-              {/* Si tiene path directo, renderiza como Link */}
-              {nav.path && !nav.subItems ? (
-                <Link
-                  href={nav.path}
-                  className={`flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                    isActive(nav.path)
-                      ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
-                      : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  <span className={`flex-shrink-0 ${
-                    isActive(nav.path) ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400"
-                  }`}>
-                    {nav.icon}
-                  </span>
-                  {(isExpanded || isHovered || isMobileOpen) && (
-                    <span className="ml-3 flex-1 text-left">{nav.name}</span>
-                  )}
-                </Link>
-              ) : (
-                /* Si tiene subItems, renderiza como botón expandible */
-                <>
-                  <button
-                    onClick={() => handleSubmenuToggle(idx)}
-                    className={`flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                      openSubmenu?.index === idx
-                        ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
-                        : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                    }`}
+      {/* Navegación (acordeón por grupo) */}
+      <nav className="flex-1 py-3">
+        {gruposVisibles.map((group) => {
+          const abierto = abiertos.has(group.label);
+          const tieneActivo = group.items.some((i) => isItemActive(i.to, pathname));
+          return (
+            <div key={group.label} className="mb-1">
+              <button
+                onClick={() => toggle(group.label)}
+                className="w-full px-4 py-2 text-[10px] font-bold tracking-[0.12em] uppercase flex items-center gap-2 transition hover:bg-[var(--gp-row-hover)] rounded-lg"
+                style={{ color: tieneActivo ? "var(--gp-green-text)" : "var(--gp-text-muted)" }}
+              >
+                <span
+                  className="w-1 h-1 rounded-full"
+                  style={{ backgroundColor: "var(--gp-green-text)", opacity: tieneActivo ? 1 : 0.5 }}
+                />
+                {group.label}
+                {!abierto && (
+                  <span
+                    className="ml-auto mr-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                    style={{ backgroundColor: "var(--gp-table-header)", color: "var(--gp-text-muted)" }}
                   >
-                    <span className={`flex-shrink-0 ${
-                      openSubmenu?.index === idx ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400"
-                    }`}>
-                      {nav.icon}
-                    </span>
-                    {(isExpanded || isHovered || isMobileOpen) && (
-                      <>
-                        <span className="ml-3 flex-1 text-left">{nav.name}</span>
-                        {nav.subItems && (
-                          <ChevronDown
-                            className={`w-4 h-4 transition-transform ${
-                              openSubmenu?.index === idx ? "rotate-180" : ""
-                            }`}
-                          />
-                        )}
-                      </>
-                    )}
-                  </button>
-
-                  {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
-                    <div
-                      ref={(el) => { if (el) subMenuRefs.current[idx] = el; }}
-                      style={{
-                        maxHeight: openSubmenu?.index === idx ? `${subMenuHeight[idx] || 0}px` : "0",
-                      }}
-                      className="overflow-hidden transition-all duration-300"
+                    {group.items.length}
+                  </span>
+                )}
+                <ChevronDown
+                  size={13}
+                  className="transition-transform duration-200"
+                  style={{
+                    marginLeft: abierto ? "auto" : undefined,
+                    transform: abierto ? "rotate(0deg)" : "rotate(-90deg)",
+                  }}
+                />
+              </button>
+              <div
+                className="overflow-hidden transition-all duration-200 ease-in-out"
+                style={{ maxHeight: abierto ? `${group.items.length * 44}px` : "0px", opacity: abierto ? 1 : 0 }}
+              >
+                {group.items.map((item) => {
+                  const active = isItemActive(item.to, pathname);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.to}
+                      href={item.to}
+                      onClick={closeMobile}
+                      className={`relative flex items-center gap-2.5 px-3.5 py-2 mx-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                        active
+                          ? "text-[var(--gp-green-text)] font-semibold"
+                          : "text-[var(--gp-text-secondary)] hover:bg-[var(--gp-row-hover)] hover:text-[#333] hover:translate-x-0.5"
+                      }`}
+                      style={
+                        active
+                          ? {
+                              background:
+                                "linear-gradient(90deg, var(--gp-green-light) 0%, rgba(244, 249, 227, 0.4) 100%)",
+                              boxShadow: "inset 0 0 0 1px rgba(178, 210, 52, 0.18)",
+                            }
+                          : {}
+                      }
                     >
-                      <ul className="mt-1 ml-4 pl-4 border-l border-gray-200 dark:border-gray-700 space-y-1">
-                        {nav.subItems.map((sub) => (
-                          <li key={sub.name}>
-                            <Link
-                              href={sub.path}
-                              className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
-                                isActive(sub.path)
-                                  ? "bg-blue-100 text-blue-700 font-medium dark:bg-blue-900/30 dark:text-blue-400"
-                                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-                              }`}
-                            >
-                              {sub.name}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+                      {active && (
+                        <span
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full"
+                          style={{
+                            background: "linear-gradient(180deg, var(--gp-green) 0%, var(--gp-green-dark) 100%)",
+                            boxShadow: "0 0 8px rgba(178, 210, 52, 0.4)",
+                          }}
+                        />
+                      )}
+                      <Icon size={17} style={{ color: active ? "var(--gp-green-text)" : undefined }} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </nav>
 
-      {/* Footer del sidebar */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-800">
-        <button
-          onClick={handleLogout}
-          className="flex items-center w-full px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-        >
-          <LogoutIcon />
-          {(isExpanded || isHovered || isMobileOpen) && (
-            <span className="ml-3">Cerrar sesión</span>
-          )}
-        </button>
+      {/* Pie: marca + versión */}
+      <div className="p-3 border-t" style={{ borderColor: "var(--gp-border)" }}>
+        <div className="text-[11px] font-semibold mb-0.5 gp-font-head" style={{ color: "var(--gp-text-secondary)" }}>
+          Corporación Garnier
+        </div>
+        <div className="text-[10px] flex items-center justify-between" style={{ color: "var(--gp-text-muted)" }}>
+          <span>GComprobantes</span>
+          <span className="px-1.5 py-0.5 rounded-full font-mono" style={{ backgroundColor: "var(--gp-table-header)" }}>
+            {APP_VERSION}
+          </span>
+        </div>
       </div>
     </aside>
   );

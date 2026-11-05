@@ -188,7 +188,7 @@
     cursor: pointer;
   }
   body {
-    @apply relative font-normal font-outfit z-1 bg-gray-50;
+    @apply relative font-normal z-1;
   }
 }
 
@@ -737,4 +737,425 @@ span.flatpickr-weekday,
     0 1px 2px 0 rgba(16, 24, 40, 0.06);
   opacity: 0.8;
   cursor: grabbing; /* Changes the cursor to indicate dragging */
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SISTEMA DE DISEÑO GARNIER — mismo lenguaje visual de Gpeople
+   ──────────────────────────────────────────────────────────────────────
+   Fuente de verdad: Gpeople/client/src/index.css. Si cambia allá, se
+   replica aquí. Todo lo nuevo de GComprobantes usa estos tokens --gp-*.
+
+   Verde Garnier  #B2D234 (Pantone 583C) — primario de marca
+   Gris  Garnier  #58585B (Pantone 425C) — secundario de marca
+   Tipografía: Poppins (títulos) + DM Sans (cuerpo), cargadas con
+   next/font en app/layout.tsx (variables --font-poppins / --font-dm-sans).
+
+   NOTA WCAG: #B2D234 no pasa AA como texto sobre blanco. Se usa SOLO para
+   superficies/acentos/logo; texto, iconos y botones usan los derivados
+   oscuros (--gp-green-text / --gp-green-darker).
+   ══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ─── Tipografía ─── */
+  --gp-font-head: var(--font-poppins), 'Poppins', sans-serif;
+  --gp-font-body: var(--font-dm-sans), 'DM Sans', sans-serif;
+
+  /* ─── Marca (verde Garnier) ─── */
+  --gp-green: #B2D234;
+  --gp-green-dark: #6f8f1e;
+  --gp-green-darker: #5e7d16;
+  --gp-green-deepest: #557012;
+  --gp-btn-primary: var(--gp-green-darker);
+  --gp-btn-primary-active: var(--gp-green-deepest);
+  --gp-green-light: #f4f9e3;
+  --gp-green-text: #587615;
+  --gp-green-mid: #cfe27e;
+  --gp-gold: #c47a20;
+  --gp-gris: #58585B;
+  --gp-grafito: #2d2d2d;
+
+  /* ─── Superficies ─── */
+  --gp-header-bg: #3f3f42;
+  --gp-sidebar-bg: #ffffff;
+  --gp-body-bg: #f5f6f4;
+  --gp-card-bg: #ffffff;
+  --gp-border: #e8e8e8;
+  --gp-border-dark: #d0d0d0;
+  --gp-border-strong: #b8b8b8;
+
+  /* ─── Texto ─── */
+  --gp-text-primary: #1e1e1e;
+  --gp-text-secondary: #525252;
+  --gp-text-muted: #8a8a8a;
+
+  /* ─── Estados ─── */
+  --gp-success-bg: #eaf4d4;
+  --gp-success-text: #587615;
+  --gp-warning-bg: #fff4e0;
+  --gp-warning-text: #c47a20;
+  --gp-danger-bg: #feeaea;
+  --gp-danger-text: #b03030;
+  --gp-info-bg: #e3eefb;
+  --gp-info-text: #1a5090;
+
+  /* ─── Tablas ─── */
+  --gp-table-header: #fafafa;
+  --gp-table-border: #f0f0f0;
+  --gp-row-hover: #f3f7ee;
+
+  /* ─── Sombras ─── */
+  --gp-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --gp-shadow-card: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  --gp-shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+  --gp-shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+  --gp-shadow-focus: 0 0 0 3px rgba(178, 210, 52, 0.35);
+
+  /* ─── Radios ─── */
+  --gp-radius-sm: 6px;
+  --gp-radius-md: 10px;
+  --gp-radius-lg: 14px;
+  --gp-radius-xl: 16px;
+}
+
+body {
+  margin: 0;
+  font-family: var(--gp-font-body);
+  background-color: var(--gp-body-bg);
+  color: var(--gp-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+}
+
+h1, h2, h3, h4, h5, h6, .gp-font-head {
+  font-family: var(--gp-font-head);
+  letter-spacing: -0.01em;
+}
+
+/* Foco accesible: halo verde Garnier */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--gp-shadow-focus);
+  border-color: var(--gp-green) !important;
+}
+
+/* ─── Animaciones ─── */
+@keyframes gp-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.gp-fade-in { animation: gp-fade-in 0.25s ease-out; }
+
+@keyframes gp-slide-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.gp-stagger > * {
+  opacity: 0;
+  animation: gp-slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.gp-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.gp-stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.gp-stagger > *:nth-child(3) { animation-delay: 0.14s; }
+.gp-stagger > *:nth-child(4) { animation-delay: 0.20s; }
+.gp-stagger > *:nth-child(5) { animation-delay: 0.26s; }
+
+.gp-skeleton {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: gp-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--gp-radius-md);
+}
+@keyframes gp-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+  border-radius: 10px;
+  border: 2px solid var(--gp-body-bg);
+}
+::-webkit-scrollbar-thumb:hover { background: #a0a0a0; }
+
+/* ─── Tarjetas ─── */
+.gp-card {
+  background-color: var(--gp-card-bg);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-xl);
+  box-shadow: var(--gp-shadow-card);
+}
+.gp-card-hover { transition: all 0.15s ease; }
+.gp-card-hover:hover {
+  box-shadow: var(--gp-shadow-md);
+  transform: translateY(-1px);
+}
+
+/* KPI: el monto escala al ancho de la tarjeta */
+.gp-kpi-card { container-type: inline-size; }
+.gp-kpi-amount {
+  font-family: var(--gp-font-head);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  white-space: nowrap;
+  font-size: clamp(0.8rem, 10.5cqi, 1.6rem);
+}
+
+/* ─── Spinner ─── */
+@keyframes gp-spin { to { transform: rotate(360deg); } }
+.gp-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 2.5px solid var(--gp-green-light);
+  border-top-color: var(--gp-green);
+  animation: gp-spin 0.7s linear infinite;
+}
+.gp-spinner-sm { width: 16px; height: 16px; border-width: 2px; }
+.gp-loading-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 16px;
+  color: var(--gp-text-muted);
+  font-size: 12px;
+}
+
+/* ─── Empty state ─── */
+.gp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 56px 16px;
+  text-align: center;
+}
+.gp-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--gp-green-light) 0%, #fafffb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gp-green-text);
+  box-shadow: inset 0 0 0 1px rgba(178, 210, 52, 0.30);
+}
+.gp-empty-title {
+  font-family: var(--gp-font-head);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--gp-text-primary);
+}
+.gp-empty-hint {
+  font-size: 12px;
+  color: var(--gp-text-muted);
+  max-width: 340px;
+}
+
+/* ─── Acentos de marca (diagonal 25-30° del isotipo) ─── */
+.gp-diagonal-accent {
+  background-image: repeating-linear-gradient(
+    118deg,
+    var(--gp-green) 0,
+    var(--gp-green) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+.gp-diagonal-band {
+  background-color: var(--gp-green);
+  background-image: repeating-linear-gradient(
+    118deg,
+    rgba(255, 255, 255, 0.22) 0,
+    rgba(255, 255, 255, 0.22) 2px,
+    transparent 2px,
+    transparent 14px
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Controles (equivalentes en clase a los estilos inline de Gpeople)
+   ══════════════════════════════════════════════════════════════════════ */
+.gp-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: var(--gp-text-muted);
+}
+.gp-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  border: 1px solid var(--gp-border);
+  background-color: #ffffff;
+  color: var(--gp-text-primary);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.gp-input::placeholder { color: var(--gp-text-muted); }
+.gp-input:disabled { background-color: var(--gp-table-header); color: var(--gp-text-muted); cursor: not-allowed; }
+select.gp-input { padding: 0 8px; }
+textarea.gp-input { height: auto; padding: 8px 12px; line-height: 1.5; resize: vertical; }
+/* El tema heredado oculta el icono del calendario nativo; en nuestros inputs se muestra */
+.gp-input[type="date"]::-webkit-calendar-picker-indicator {
+  display: block;
+  -webkit-appearance: auto;
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.gp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+.gp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.gp-btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 6px; }
+.gp-btn-primary { background-color: var(--gp-green-text); color: #ffffff; }
+.gp-btn-primary:hover:not(:disabled) { background-color: var(--gp-green-deepest); box-shadow: var(--gp-shadow-md); }
+.gp-btn-secondary { background-color: #ffffff; border-color: var(--gp-border); color: var(--gp-text-secondary); }
+.gp-btn-secondary:hover:not(:disabled) { background-color: var(--gp-table-header); color: var(--gp-text-primary); }
+.gp-btn-ghost { background-color: transparent; color: var(--gp-text-secondary); }
+.gp-btn-ghost:hover:not(:disabled) { background-color: var(--gp-row-hover); color: var(--gp-text-primary); }
+.gp-btn-danger { background-color: var(--gp-danger-text); color: #ffffff; }
+.gp-btn-danger:hover:not(:disabled) { background-color: #962626; }
+
+.gp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--gp-text-muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.gp-icon-btn:hover:not(:disabled) { background-color: #f3f4f6; color: var(--gp-text-primary); }
+.gp-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ─── Tablas ─── */
+.gp-table { width: 100%; border-collapse: collapse; }
+.gp-table thead tr { background-color: var(--gp-table-header); }
+.gp-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--gp-text-muted);
+  border-bottom: 1px solid var(--gp-table-border);
+  white-space: nowrap;
+}
+.gp-table td {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--gp-text-secondary);
+  border-bottom: 1px solid var(--gp-table-border);
+}
+.gp-table tbody tr { transition: background-color 0.12s ease; }
+.gp-table tbody tr:hover { background-color: var(--gp-row-hover); }
+.gp-table tbody tr:last-child td { border-bottom: none; }
+
+/* ─── Badges ─── */
+.gp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.gp-badge-success { background-color: var(--gp-success-bg); color: var(--gp-success-text); }
+.gp-badge-warning { background-color: var(--gp-warning-bg); color: var(--gp-warning-text); }
+.gp-badge-danger  { background-color: var(--gp-danger-bg);  color: var(--gp-danger-text); }
+.gp-badge-info    { background-color: var(--gp-info-bg);    color: var(--gp-info-text); }
+.gp-badge-neutral { background-color: var(--gp-table-header); color: var(--gp-text-muted); box-shadow: inset 0 0 0 1px var(--gp-border); }
+.gp-badge-dark    { background-color: var(--gp-gris); color: #ffffff; }
+
+/* ─── Avisos en línea ─── */
+.gp-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.gp-alert-danger  { background-color: var(--gp-danger-bg);  color: var(--gp-danger-text);  border: 1px solid rgba(176, 48, 48, 0.18); }
+.gp-alert-info    { background-color: var(--gp-info-bg);    color: var(--gp-info-text);    border: 1px solid rgba(26, 80, 144, 0.15); }
+.gp-alert-success { background-color: var(--gp-success-bg); color: var(--gp-success-text); border: 1px solid rgba(88, 118, 21, 0.18); }
+.gp-alert-warning { background-color: var(--gp-warning-bg); color: var(--gp-warning-text); border: 1px solid rgba(196, 122, 32, 0.2); }
+
+/* Checkbox con el verde de marca */
+.gp-checkbox { width: 16px; height: 16px; accent-color: var(--gp-green-text); cursor: pointer; }
+
+/* ─── SweetAlert2 (pantallas heredadas que aún lo usan) con la marca ─── */
+.swal2-popup {
+  font-family: var(--gp-font-body) !important;
+  border-radius: var(--gp-radius-xl) !important;
+  padding: 1.5rem !important;
+}
+.swal2-title {
+  font-family: var(--gp-font-head) !important;
+  font-size: 17px !important;
+  font-weight: 600 !important;
+  color: var(--gp-text-primary) !important;
+}
+.swal2-html-container { font-size: 13px !important; color: var(--gp-text-secondary) !important; }
+.swal2-styled.swal2-confirm { background-color: var(--gp-green-text) !important; border-radius: 8px !important; font-size: 13px !important; }
+.swal2-styled.swal2-cancel { background-color: #ffffff !important; color: var(--gp-text-secondary) !important; border: 1px solid var(--gp-border) !important; border-radius: 8px !important; font-size: 13px !important; }
+
+/* iOS hace zoom al enfocar controles < 16px: en móvil se fuerzan a 16 */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px !important; }
+}
+
+/* ─── Pantallas de acceso (Login de Gpeople) ─── */
+.gp-auth-input {
+  border: 1.5px solid var(--gp-border);
+  color: var(--gp-text-primary);
+  background-color: #fafafa;
+}
+.gp-auth-input::placeholder { color: var(--gp-text-muted); }
+.gp-auth-input:focus {
+  border-color: var(--gp-green) !important;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(178, 210, 52, 0.18) !important;
+}
+.gp-auth-submit {
+  background: linear-gradient(135deg, var(--gp-green-darker) 0%, #557012 100%);
+  letter-spacing: 0.01em;
+  box-shadow: 0 6px 18px -4px rgba(94, 125, 22, 0.45), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.gp-auth-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -4px rgba(94, 125, 22, 0.55), 0 2px 4px -1px rgba(0, 0, 0, 0.08);
 }

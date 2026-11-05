@@ -1,8 +1,30 @@
 "use client";
+// Comprobantes de pago — vista principal.
+// Diseño: sistema Garnier de Gpeople (PageHeader, tarjetas KPI, panel de
+// filtros, tabla gp-table, paginación y modal de envío con la marca).
+// La lógica de datos es la misma de antes: GET /facturas con el token,
+// filtros en cliente, exportación CSV y POST /api/enviar-comprobante.
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import Swal from 'sweetalert2';
-
-/* import emailjs from '@emailjs/browser'; */
+import toast from "react-hot-toast";
+import {
+  Receipt,
+  Download,
+  SlidersHorizontal,
+  ChevronDown,
+  Eye,
+  Mail,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  FileSearch,
+  Send,
+  Wallet,
+  DollarSign,
+  RotateCcw,
+} from "lucide-react";
+import PageHeader from "@/components/gp/PageHeader";
+import Modal from "@/components/gp/Modal";
 
 // --- INTERFACES ---
 interface Factura {
@@ -24,12 +46,57 @@ interface DatosProps {
   userCompanies: string[];
 }
 
-interface StatusMessage {
-  type: 'success' | 'error' | 'info' | null;
-  text: string | null;
+const MONEDAS_COLONES = ["¢", "₡", "colones", "crc"];
+const MONEDAS_DOLARES = ["$", "usd", "dólares", "dolares"];
+
+const fmtMonto = (n: number) =>
+  Number(n || 0).toLocaleString("es-CR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// Tarjeta KPI (mismo patrón que el Dashboard de Gpeople)
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+  loading,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: React.ReactNode;
+  color: string;
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="gp-card p-5">
+        <div className="gp-skeleton h-10 w-10 rounded-xl mb-3" />
+        <div className="gp-skeleton h-7 w-24 mb-2" />
+        <div className="gp-skeleton h-3 w-32" />
+      </div>
+    );
+  }
+  return (
+    <div className="gp-kpi-card gp-card gp-card-hover p-5 gp-fade-in">
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center"
+        style={{ backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }}
+      >
+        <Icon size={22} style={{ color }} />
+      </div>
+      <div className="mt-4">
+        <div className="gp-kpi-amount leading-none" style={{ color: "var(--gp-text-primary)" }}>
+          {value}
+        </div>
+        <div className="text-[12px] mt-1.5" style={{ color: "var(--gp-text-secondary)" }}>
+          {label}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // --- COMPONENTE PRINCIPAL ---
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function Datos({ userRole, userCompanies }: DatosProps) {
   // Estados
   const [facturas, setFacturas] = useState<Factura[]>([]);
@@ -41,105 +108,100 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
   const [filterFechaDesde, setFilterFechaDesde] = useState("");
   const [filterFechaHasta, setFilterFechaHasta] = useState("");
   const [filterConcepto, setFilterConcepto] = useState("");
-  const [filterMontoMin, setFilterMontoMin] = useState<number | ''>('');
-  const [filterMontoMax, setFilterMontoMax] = useState<number | ''>('');
-  const [statusMessage, setStatusMessage] = useState<StatusMessage>({ type: null, text: null });
+  const [filterMontoMin, setFilterMontoMin] = useState<number | "">("");
+  const [filterMontoMax, setFilterMontoMax] = useState<number | "">("");
   const [currentPage, setCurrentPage] = useState(1);
   const [facturasPerPage] = useState(10);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(true);
 
-  // Función de alerta
-  const showAlert = useCallback((type: 'success' | 'error' | 'info', title: string, text: string) => {
-    setStatusMessage({ type, text: `${title}: ${text}` });
-    setTimeout(() => setStatusMessage({ type: null, text: null }), 3000);
-  }, []);
+  // Modal de envío por correo
+  const [envio, setEnvio] = useState<{
+    factura: Factura;
+    email: string;
+    asunto: string;
+    mensaje: string;
+  } | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [envioError, setEnvioError] = useState<string | null>(null);
 
   // Carga de datos
   const buscarFacturasInicial = useCallback(async () => {
-  const token = localStorage.getItem("token");
-  
-  if (!token) {
-    window.location.replace("/signin");
-    return;
-  }
+    const token = localStorage.getItem("token");
 
-  setLoading(true);
+    if (!token) {
+      window.location.replace("/signin");
+      return;
+    }
 
-  try {
-    // Esta es la línea que te marca error en consola
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/facturas`, {
-      method: 'GET',
-      headers: { 
-        "Authorization": `Bearer ${token}`, // El 403 suele ser porque el token está mal o expiró
-        "Content-Type": "application/json"
-      }
-    });
+    setLoading(true);
 
-    // Si la respuesta no es 200 OK (es 400 o 403 como en tus fotos)
-    if (!response.ok) {
-            console.error(`Error de respuesta: ${response.status}`);
-            
-            if (response.status === 401 || response.status === 403) {
-                localStorage.removeItem('token'); 
-                // Usamos la ruta que confirmaste en el AppSidebar
-                window.location.href = '/signin'; 
-                return;
-            }
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/facturas`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-            setFacturas([]); 
-            return;
+      if (!response.ok) {
+        console.error(`Error de respuesta: ${response.status}`);
+
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem("token");
+          window.location.href = "/signin";
+          return;
         }
 
-    const data = await response.json();
+        setFacturas([]);
+        return;
+      }
 
-    // Verificamos que 'data' sea realmente lo que esperamos
-    if (Array.isArray(data)) {
-  // Ordenamos de la fecha más reciente a la más antigua
-  const facturasOrdenadas = data.sort((a, b) => {
-    return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
-  });
-  setFacturas(facturasOrdenadas);
-    } else {
-      console.warn("Los datos recibidos no son un Array:", data);
-      setFacturas([]); 
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        // De la fecha más reciente a la más antigua
+        const facturasOrdenadas = data.sort((a, b) => {
+          return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+        });
+        setFacturas(facturasOrdenadas);
+      } else {
+        console.warn("Los datos recibidos no son un Array:", data);
+        setFacturas([]);
+      }
+
+      setCurrentPage(1);
+    } catch (error) {
+      console.error("Error de conexión:", error);
+      setFacturas([]);
+      toast.error("Sin conexión con el servidor");
+    } finally {
+      setLoading(false);
     }
-
-    setCurrentPage(1);
-
-  } catch (error) {
-    // Si hay error de red o el servidor está apagado
-    console.error("Error de conexión:", error);
-    setFacturas([]); // Mantenemos la seguridad de la App
-  } finally {
-    setLoading(false);
-  }
-}, [showAlert]);
+  }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token || facturas.length === 0) {
-      buscarFacturasInicial();
-    }
-  }, [buscarFacturasInicial, facturas.length]);
+    buscarFacturasInicial();
+  }, [buscarFacturasInicial]);
 
   // Handlers
-  const handleTextChange = (setter: React.Dispatch<React.SetStateAction<string>>) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTextChange =
+    (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
       setter(e.target.value);
       setCurrentPage(1);
     };
 
-  const handleSelectChange = (setter: React.Dispatch<React.SetStateAction<string>>) =>
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSelectChange =
+    (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLSelectElement>) => {
       setter(e.target.value);
       setCurrentPage(1);
     };
 
-  const handleNumberChange = (setter: React.Dispatch<React.SetStateAction<number | ''>>) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNumberChange =
+    (setter: React.Dispatch<React.SetStateAction<number | "">>) => (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
-      setter(value === '' ? '' : parseFloat(value));
+      setter(value === "" ? "" : parseFloat(value));
       setCurrentPage(1);
     };
 
@@ -152,10 +214,23 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
     setFilterFechaDesde("");
     setFilterFechaHasta("");
     setFilterConcepto("");
-    setFilterMontoMin('');
-    setFilterMontoMax('');
+    setFilterMontoMin("");
+    setFilterMontoMax("");
     setCurrentPage(1);
   };
+
+  const filtrosActivos = [
+    filterProveedor,
+    filterEmpresa,
+    filterBanco,
+    filterMoneda,
+    filterNumeroReferencia,
+    filterFechaDesde,
+    filterFechaHasta,
+    filterConcepto,
+    filterMontoMin,
+    filterMontoMax,
+  ].filter((v) => v !== "").length;
 
   // Filtrado
   const filteredFacturas = useMemo(() => {
@@ -164,30 +239,65 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
     const dateToExclusive = dateTo ? new Date(dateTo.getTime()) : null;
     if (dateToExclusive) dateToExclusive.setDate(dateToExclusive.getDate() + 1);
 
-    return facturas.filter(factura => {
+    return facturas.filter((factura) => {
       const matchesEmpresa = !filterEmpresa || factura.empresa.toLowerCase().includes(filterEmpresa.toLowerCase());
-      const matchesProveedor = !filterProveedor || factura.proveedor.toLowerCase().includes(filterProveedor.toLowerCase());
-      const matchesBanco = !filterBanco || (factura.banco && factura.banco.toLowerCase().includes(filterBanco.toLowerCase()));
+      const matchesProveedor =
+        !filterProveedor || factura.proveedor.toLowerCase().includes(filterProveedor.toLowerCase());
+      const matchesBanco =
+        !filterBanco || (factura.banco && factura.banco.toLowerCase().includes(filterBanco.toLowerCase()));
       const matchesMoneda = !filterMoneda || factura.moneda.toLowerCase() === filterMoneda.toLowerCase();
-      const matchesNumeroReferencia = !filterNumeroReferencia || (factura.numeroReferencia && factura.numeroReferencia.includes(filterNumeroReferencia));
-     const matchesConcepto = !filterConcepto || (factura.concepto && factura.concepto.toLowerCase().includes(filterConcepto.toLowerCase()));
+      const matchesNumeroReferencia =
+        !filterNumeroReferencia ||
+        (factura.numeroReferencia && factura.numeroReferencia.includes(filterNumeroReferencia));
+      const matchesConcepto =
+        !filterConcepto ||
+        (factura.concepto && factura.concepto.toLowerCase().includes(filterConcepto.toLowerCase()));
 
       let matchesMontoRange = true;
-      if (filterMontoMin !== '' && factura.monto < filterMontoMin) matchesMontoRange = false;
-      if (filterMontoMax !== '' && factura.monto > filterMontoMax) matchesMontoRange = false;
+      if (filterMontoMin !== "" && factura.monto < filterMontoMin) matchesMontoRange = false;
+      if (filterMontoMax !== "" && factura.monto > filterMontoMax) matchesMontoRange = false;
 
       let matchesFechaRange = true;
       const facturaDate = new Date(factura.fecha).getTime();
       if (dateFrom) matchesFechaRange = matchesFechaRange && facturaDate >= dateFrom.getTime();
       if (dateToExclusive) matchesFechaRange = matchesFechaRange && facturaDate < dateToExclusive.getTime();
 
-      const matchesRole = true;
-
-      return matchesEmpresa && matchesProveedor && matchesBanco && matchesMoneda &&
-             matchesNumeroReferencia && matchesConcepto && matchesMontoRange && matchesFechaRange && matchesRole;
+      return (
+        matchesEmpresa &&
+        matchesProveedor &&
+        matchesBanco &&
+        matchesMoneda &&
+        matchesNumeroReferencia &&
+        matchesConcepto &&
+        matchesMontoRange &&
+        matchesFechaRange
+      );
     });
-  }, [facturas, filterEmpresa, filterProveedor, filterBanco, filterMoneda, filterNumeroReferencia,
-      filterConcepto, filterMontoMin, filterMontoMax, filterFechaDesde, filterFechaHasta, userRole, userCompanies]);
+  }, [
+    facturas,
+    filterEmpresa,
+    filterProveedor,
+    filterBanco,
+    filterMoneda,
+    filterNumeroReferencia,
+    filterConcepto,
+    filterMontoMin,
+    filterMontoMax,
+    filterFechaDesde,
+    filterFechaHasta,
+  ]);
+
+  // Totales por moneda (sobre lo filtrado)
+  const totales = useMemo(() => {
+    let colones = 0;
+    let dolares = 0;
+    for (const f of filteredFacturas) {
+      const m = String(f.moneda || "").trim().toLowerCase();
+      if (MONEDAS_COLONES.includes(m)) colones += Number(f.monto) || 0;
+      else if (MONEDAS_DOLARES.includes(m)) dolares += Number(f.monto) || 0;
+    }
+    return { colones, dolares };
+  }, [filteredFacturas]);
 
   // Paginación
   const indexOfLastFactura = currentPage * facturasPerPage;
@@ -198,190 +308,177 @@ export function Datos({ userRole, userCompanies }: DatosProps) {
   // Exportación CSV
   const exportToCsv = () => {
     if (filteredFacturas.length === 0) {
-      showAlert("info", "Sin datos", "No hay datos para exportar.");
+      toast("No hay datos para exportar.", { icon: "ℹ️" });
       return;
     }
     const headers = ["ID", "Proveedor", "Empresa", "Fecha", "Moneda", "Monto", "Concepto", "Banco", "Referencia"];
     const csvContent = [
       headers.join(","),
-      ...filteredFacturas.map(f =>
-        `"${f.id}","${f.proveedor}","${f.empresa}","${new Date(f.fecha).toLocaleDateString()}","${f.moneda}","${f.monto}","${f.concepto?.replace(/"/g, '""')}","${f.banco || ''}","${f.numeroReferencia || ''}"`
-      )
+      ...filteredFacturas.map(
+        (f) =>
+          `"${f.id}","${f.proveedor}","${f.empresa}","${new Date(f.fecha).toLocaleDateString()}","${f.moneda}","${f.monto}","${f.concepto?.replace(/"/g, '""')}","${f.banco || ""}","${f.numeroReferencia || ""}"`
+      ),
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = "comprobantes.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showAlert("success", "Exportado", "Archivo CSV descargado.");
+    toast.success("Archivo CSV descargado");
   };
 
-const enviarComprobante = async (
-  factura: any,
-  emailDestino: string,
-  asunto: string,
-  mensaje: string
-) => {
-  const token = localStorage.getItem("token");
+  const abrirEnvio = (factura: Factura) => {
+    setEnvioError(null);
+    setEnvio({
+      factura,
+      asunto: `Comprobante de Pago - ${factura.proveedor}`,
+      email: factura.email || "EnlaceBCT@corporacionbct.com",
+      mensaje: "Buen día, adjunto envío el comprobante de pago solicitado.",
+    });
+  };
 
-  Swal.fire({
-    title: 'Enviando...',
-    text: 'Estamos procesando el correo con SendGrid',
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading();
+  const enviarComprobante = async () => {
+    if (!envio) return;
+    if (!envio.email.trim()) {
+      setEnvioError("El correo es obligatorio");
+      return;
     }
-  });
+    const token = localStorage.getItem("token");
+    setEnviando(true);
+    setEnvioError(null);
 
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/enviar-comprobante`,
-      {
-        method: 'POST',
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/enviar-comprobante`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          to: emailDestino,
-          facturaId: factura.id,
-          asunto,
-          mensajePersonalizado: mensaje,
+          to: envio.email.trim(),
+          facturaId: envio.factura.id,
+          asunto: envio.asunto,
+          mensajePersonalizado: envio.mensaje,
         }),
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let data: any;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("La respuesta del servidor no es válida");
       }
-    );
 
-    let data: any;
-    try {
-      data = await response.json();
-    } catch {
-      throw new Error('La respuesta del servidor no es válida');
+      if (!response.ok) {
+        throw new Error(data?.error || "Error al enviar el comprobante");
+      }
+
+      toast.success(`Comprobante enviado a ${envio.email.trim()}`);
+      setEnvio(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      console.error("ERROR:", err);
+      setEnvioError(err.message || "Error de conexión");
+    } finally {
+      setEnviando(false);
     }
-
-    if (!response.ok) {
-      throw new Error(data?.error || 'Error al enviar el comprobante');
-    }
-
-    Swal.fire(
-      '¡Logrado!',
-      'El comprobante se envió correctamente.',
-      'success'
-    );
-
-  } catch (err: any) {
-    console.error('ERROR:', err);
-    Swal.fire(
-      'Vaya...',
-      err.message || 'Error de conexión',
-      'error'
-    );
-  }
-};
-
-  // Estilos de input reutilizables
-  const inputClass = "w-full h-10 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all";
-  const labelClass = "block text-xs font-medium text-gray-500 mb-1";
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Mensaje de estado */}
-      {statusMessage.text && (
-        <div className={`px-4 py-3 rounded-md text-sm ${
-          statusMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
-          statusMessage.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
-          'bg-blue-50 text-blue-800 border border-blue-200'
-        }`}>
-          {statusMessage.text}
-        </div>
-      )}
+    <div className="space-y-5">
+      <PageHeader
+        icon={Receipt}
+        title="Comprobantes de Pago"
+        subtitle="Gestione y consulte los comprobantes registrados"
+        badge={loading ? undefined : facturas.length}
+        action={
+          <button onClick={exportToCsv} className="gp-btn gp-btn-primary" disabled={loading}>
+            <Download size={14} /> Exportar CSV
+          </button>
+        }
+      />
 
-      {/* Panel de Filtros */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        {/* Header del panel */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      {/* KPIs sobre el resultado filtrado */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard
+          icon={Receipt}
+          label={filtrosActivos > 0 ? "Comprobantes (filtrados)" : "Comprobantes registrados"}
+          value={filteredFacturas.length.toLocaleString("es-CR")}
+          color="var(--gp-green-text)"
+          loading={loading}
+        />
+        <KpiCard
+          icon={Wallet}
+          label="Total en colones"
+          value={`₡${fmtMonto(totales.colones)}`}
+          color="var(--gp-info-text)"
+          loading={loading}
+        />
+        <KpiCard
+          icon={DollarSign}
+          label="Total en dólares"
+          value={`$${fmtMonto(totales.dolares)}`}
+          color="var(--gp-gold)"
+          loading={loading}
+        />
+      </div>
+
+      {/* Panel de filtros */}
+      <div className="gp-card">
+        <div
+          className="flex items-center justify-between px-4 py-3 flex-wrap gap-2"
+          style={{ borderBottom: showFilters ? "1px solid var(--gp-border)" : "none" }}
+        >
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            className="flex items-center gap-2 text-[13px] font-semibold gp-font-head"
+            style={{ color: "var(--gp-text-primary)" }}
           >
-            <svg className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            <SlidersHorizontal size={15} style={{ color: "var(--gp-green-text)" }} />
             Filtros de búsqueda
-            <span className="text-xs text-gray-400">({filteredFacturas.length} resultados)</span>
+            {filtrosActivos > 0 && <span className="gp-badge gp-badge-success">{filtrosActivos} activos</span>}
+            <span className="text-[11px] font-normal" style={{ color: "var(--gp-text-muted)", fontFamily: "var(--gp-font-body)" }}>
+              {filteredFacturas.length} resultados
+            </span>
+            <ChevronDown
+              size={14}
+              className="transition-transform duration-200"
+              style={{ color: "var(--gp-text-muted)", transform: showFilters ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={clearFilters}
-              className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              Limpiar
-            </button>
-            <button
-              onClick={exportToCsv}
-              className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center gap-1"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Exportar
-            </button>
-          </div>
+          <button onClick={clearFilters} className="gp-btn gp-btn-ghost gp-btn-sm" disabled={filtrosActivos === 0}>
+            <RotateCcw size={12} /> Limpiar
+          </button>
         </div>
 
-        {/* Contenido de filtros */}
         {showFilters && (
-          <div className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="p-4 gp-fade-in">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               <div>
-                <label className={labelClass}>Proveedor</label>
-                <input
-                  type="text"
-                  className={inputClass}
-                  value={filterProveedor}
-                  onChange={handleTextChange(setFilterProveedor)}
-                  placeholder="Buscar..."
-                />
+                <label className="gp-label">Proveedor</label>
+                <input type="text" className="gp-input" value={filterProveedor} onChange={handleTextChange(setFilterProveedor)} placeholder="Buscar..." />
               </div>
               <div>
-                <label className={labelClass}>Empresa</label>
-                <input
-                  type="text"
-                  className={inputClass}
-                  value={filterEmpresa}
-                  onChange={handleTextChange(setFilterEmpresa)}
-                  placeholder="Buscar..."
-                />
+                <label className="gp-label">Empresa</label>
+                <input type="text" className="gp-input" value={filterEmpresa} onChange={handleTextChange(setFilterEmpresa)} placeholder="Buscar..." />
               </div>
               <div>
-                <label className={labelClass}>Fecha desde</label>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={filterFechaDesde}
-                  onChange={handleTextChange(setFilterFechaDesde)}
-                />
+                <label className="gp-label">Fecha desde</label>
+                <input type="date" className="gp-input" value={filterFechaDesde} onChange={handleTextChange(setFilterFechaDesde)} />
               </div>
               <div>
-                <label className={labelClass}>Fecha hasta</label>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={filterFechaHasta}
-                  onChange={handleTextChange(setFilterFechaHasta)}
-                />
+                <label className="gp-label">Fecha hasta</label>
+                <input type="date" className="gp-input" value={filterFechaHasta} onChange={handleTextChange(setFilterFechaHasta)} />
               </div>
               <div>
-                <label className={labelClass}>Moneda</label>
-                <select
-                  className={inputClass}
-                  value={filterMoneda}
-                  onChange={handleSelectChange(setFilterMoneda)}
-                >
+                <label className="gp-label">Moneda</label>
+                <select className="gp-input" value={filterMoneda} onChange={handleSelectChange(setFilterMoneda)}>
                   <option value="">Todas</option>
                   <option value="$">$</option>
                   <option value="¢">¢</option>
@@ -390,52 +487,40 @@ const enviarComprobante = async (
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Monto mínimo</label>
+                <label className="gp-label">Monto mínimo</label>
                 <input
                   type="number"
                   step="0.01"
-                  className={inputClass}
-                  value={filterMontoMin === '' ? '' : filterMontoMin}
+                  className="gp-input tabular-nums"
+                  value={filterMontoMin === "" ? "" : filterMontoMin}
                   onChange={handleNumberChange(setFilterMontoMin)}
                   placeholder="0.00"
                 />
               </div>
               <div>
-                <label className={labelClass}>Monto máximo</label>
+                <label className="gp-label">Monto máximo</label>
                 <input
                   type="number"
                   step="0.01"
-                  className={inputClass}
-                  value={filterMontoMax === '' ? '' : filterMontoMax}
+                  className="gp-input tabular-nums"
+                  value={filterMontoMax === "" ? "" : filterMontoMax}
                   onChange={handleNumberChange(setFilterMontoMax)}
                   placeholder="0.00"
                 />
               </div>
               <div>
-                <label className={labelClass}>Concepto</label>
-                <input
-                  type="text"
-                  className={inputClass}
-                  value={filterConcepto}
-                  onChange={handleTextChange(setFilterConcepto)}
-                  placeholder="Buscar..."
-                />
+                <label className="gp-label">Concepto</label>
+                <input type="text" className="gp-input" value={filterConcepto} onChange={handleTextChange(setFilterConcepto)} placeholder="Buscar..." />
               </div>
               <div>
-                <label className={labelClass}>Banco</label>
-                <input
-                  type="text"
-                  className={inputClass}
-                  value={filterBanco}
-                  onChange={handleTextChange(setFilterBanco)}
-                  placeholder="Buscar..."
-                />
+                <label className="gp-label">Banco</label>
+                <input type="text" className="gp-input" value={filterBanco} onChange={handleTextChange(setFilterBanco)} placeholder="Buscar..." />
               </div>
               <div>
-                <label className={labelClass}>No. Referencia</label>
+                <label className="gp-label">No. Referencia</label>
                 <input
                   type="text"
-                  className={inputClass}
+                  className="gp-input"
                   value={filterNumeroReferencia}
                   onChange={handleTextChange(setFilterNumeroReferencia)}
                   placeholder="Buscar..."
@@ -446,144 +531,105 @@ const enviarComprobante = async (
         )}
       </div>
 
-      {/* Estado de carga */}
+      {/* Cargando */}
       {loading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="flex items-center gap-3 text-gray-500">
-            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span>Cargando comprobantes...</span>
-          </div>
+        <div className="gp-card overflow-hidden p-4 space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="gp-skeleton h-10 rounded-md" />
+          ))}
         </div>
       )}
 
       {/* Sin resultados */}
       {!loading && filteredFacturas.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <p className="mt-2 text-sm text-gray-500">No se encontraron comprobantes</p>
-          <p className="text-xs text-gray-400">Intenta ajustar los filtros de búsqueda</p>
+        <div className="gp-card gp-fade-in">
+          <div className="gp-empty">
+            <div className="gp-empty-icon">
+              <FileSearch size={26} />
+            </div>
+            <div className="gp-empty-title">No se encontraron comprobantes</div>
+            <div className="gp-empty-hint">
+              {filtrosActivos > 0
+                ? "Ningún comprobante coincide con los filtros. Ajústelos o límpielos para ver todo."
+                : "Aún no hay comprobantes registrados para sus empresas."}
+            </div>
+            {filtrosActivos > 0 && (
+              <button onClick={clearFilters} className="gp-btn gp-btn-secondary mt-1">
+                <RotateCcw size={13} /> Limpiar filtros
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Tabla de datos */}
+      {/* Tabla */}
       {!loading && filteredFacturas.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div className="gp-card overflow-hidden gp-fade-in">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="gp-table">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Proveedor</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Empresa</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Fecha</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Moneda</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Monto</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Banco</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Referencia</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Concepto</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wide">Acciones</th>
+                <tr>
+                  <th>Proveedor</th>
+                  <th>Empresa</th>
+                  <th>Fecha</th>
+                  <th>Moneda</th>
+                  <th style={{ textAlign: "right" }}>Monto</th>
+                  <th>Banco</th>
+                  <th>Referencia</th>
+                  <th>Concepto</th>
+                  <th style={{ textAlign: "center" }}>Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {currentFacturas.map((factura, idx) => (
-                  <tr key={factura.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/50 transition-colors`}>
-                    <td className="px-4 py-3 text-sm text-gray-900 font-medium">{factura.proveedor}</td>
-                    {/* <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">{factura.empresa}</td> */}
-                    <td className="px-4 py-3 text-sm text-gray-600 whitespace-normal break-words">{factura.empresa}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
-                      {new Date(factura.fecha).toLocaleDateString('es-CR')}
+              <tbody>
+                {currentFacturas.map((factura) => (
+                  <tr key={factura.id}>
+                    <td className="font-medium" style={{ color: "var(--gp-text-primary)" }}>
+                      {factura.proveedor}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{factura.moneda}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 font-semibold text-right tabular-nums">
-                      {factura.monto.toLocaleString('es-CR', { minimumFractionDigits: 2 })}
+                    <td className="whitespace-normal break-words min-w-[160px]">{factura.empresa}</td>
+                    <td className="whitespace-nowrap tabular-nums">
+                      {new Date(factura.fecha).toLocaleDateString("es-CR")}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{factura.banco || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 font-mono text-xs">{factura.numeroReferencia || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate" title={factura.concepto}>
+                    <td>
+                      <span className="gp-badge gp-badge-info">{factura.moneda}</span>
+                    </td>
+                    <td
+                      className="font-semibold text-right tabular-nums whitespace-nowrap"
+                      style={{ color: "var(--gp-text-primary)" }}
+                    >
+                      {fmtMonto(factura.monto)}
+                    </td>
+                    <td>{factura.banco || "—"}</td>
+                    <td className="font-mono text-[11px]">{factura.numeroReferencia || "—"}</td>
+                    <td className="max-w-[220px] truncate" title={factura.concepto}>
                       {factura.concepto}
                     </td>
-                    <td className="px-4 py-3 text-center">
-  <div className="flex items-center justify-center gap-2">
-    {/* Botón de Ver (El que ya tienes) */}
-    {factura.documentoUrl ? (
-      <>
-        <a
-          href={factura.documentoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors"
-          title="Ver documento"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-        </a>
-
-        {/* BOTÓN NUEVO: Enviar por correo */}
-        {/* BOTÓN: Enviar por correo */}
-<button
-  onClick={async () => {
-    // 1. Pedimos Correo, Asunto y Mensaje en una sola alerta
-    const { value: formValues } = await Swal.fire({
-      title: 'Enviar Comprobante',
-      html: `
-        <div style="text-align: left; margin-bottom: 10px;">
-          <label style="font-weight: bold;">Asunto:</label>
-          <input id="swal-asunto" class="swal2-input" placeholder="Ej: Comprobante de pago" value="Comprobante de Pago - ${factura.proveedor}">
-        </div>
-        <div style="text-align: left; margin-bottom: 10px;">
-          <label style="font-weight: bold;">Correo del destinatario:</label>
-          <input id="swal-email" class="swal2-input" placeholder="ejemplo@correo.com" value="${factura.email || 'EnlaceBCT@corporacionbct.com'}">
-        </div>
-        <div style="text-align: left;">
-          <label style="font-weight: bold;">Mensaje:</label>
-          <textarea id="swal-mensaje" class="swal2-textarea" placeholder="Escriba un mensaje opcional...">Buen día, adjunto envío el comprobante de pago solicitado.</textarea>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Enviar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#059669',
-      preConfirm: () => {
-        // Validamos que el correo no esté vacío
-        const email = (document.getElementById('swal-email') as HTMLInputElement).value;
-        if (!email) {
-          Swal.showValidationMessage('El correo es obligatorio');
-          return false;
-        }
-        return {
-          email: email,
-          asunto: (document.getElementById('swal-asunto') as HTMLInputElement).value,
-          mensaje: (document.getElementById('swal-mensaje') as HTMLTextAreaElement).value
-        };
-      }
-    });
-
-    // 2. Si el usuario llenó los datos y dio "Enviar"
-    if (formValues) {
-      // Llamamos a la función real pasando los nuevos datos
-      enviarComprobante(factura, formValues.email, formValues.asunto, formValues.mensaje);
-    }
-  }}
-  className="inline-flex items-center justify-center w-8 h-8 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-full transition-colors"
-  title="Enviar por correo"
->
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-  </svg>
-</button>
-      </>
-    ) : (
-      <span className="text-gray-300">—</span>
-    )}
-  </div>
-</td>
+                    <td className="text-center">
+                      {factura.documentoUrl ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <a
+                            href={factura.documentoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="gp-icon-btn"
+                            title="Ver documento"
+                            aria-label="Ver documento"
+                          >
+                            <Eye size={15} style={{ color: "var(--gp-green-text)" }} />
+                          </a>
+                          <button
+                            onClick={() => abrirEnvio(factura)}
+                            className="gp-icon-btn"
+                            title="Enviar por correo"
+                            aria-label="Enviar por correo"
+                          >
+                            <Mail size={15} style={{ color: "var(--gp-info-text)" }} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ color: "var(--gp-border-dark)" }}>—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -592,55 +638,132 @@ const enviarComprobante = async (
 
           {/* Paginación */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
-              <div className="text-sm text-gray-500">
-                Mostrando {indexOfFirstFactura + 1} - {Math.min(indexOfLastFactura, filteredFacturas.length)} de {filteredFacturas.length}
+            <div
+              className="flex items-center justify-between px-4 py-2.5 border-t flex-wrap gap-2"
+              style={{ borderColor: "var(--gp-border)", backgroundColor: "var(--gp-table-header)" }}
+            >
+              <div className="text-[12px] tabular-nums" style={{ color: "var(--gp-text-muted)" }}>
+                Mostrando {indexOfFirstFactura + 1}–{Math.min(indexOfLastFactura, filteredFacturas.length)} de{" "}
+                {filteredFacturas.length}
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                  </svg>
+                <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="gp-icon-btn" aria-label="Primera página">
+                  <ChevronsLeft size={15} />
                 </button>
                 <button
-                  onClick={() => setCurrentPage(p => p - 1)}
+                  onClick={() => setCurrentPage((p) => p - 1)}
                   disabled={currentPage === 1}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="gp-icon-btn"
+                  aria-label="Página anterior"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
+                  <ChevronLeft size={15} />
                 </button>
-                <span className="px-3 py-1 text-sm font-medium text-gray-700">
+                <span
+                  className="px-2.5 py-1 text-[12px] font-medium tabular-nums rounded-md"
+                  style={{ color: "var(--gp-text-primary)", backgroundColor: "white", border: "1px solid var(--gp-border)" }}
+                >
                   {currentPage} / {totalPages}
                 </span>
                 <button
-                  onClick={() => setCurrentPage(p => p + 1)}
+                  onClick={() => setCurrentPage((p) => p + 1)}
                   disabled={currentPage === totalPages}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="gp-icon-btn"
+                  aria-label="Página siguiente"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <ChevronRight size={15} />
                 </button>
                 <button
                   onClick={() => setCurrentPage(totalPages)}
                   disabled={currentPage === totalPages}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="gp-icon-btn"
+                  aria-label="Última página"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                  </svg>
+                  <ChevronsRight size={15} />
                 </button>
               </div>
             </div>
           )}
         </div>
       )}
+
+      {/* Modal: enviar comprobante por correo */}
+      <Modal
+        open={!!envio}
+        title="Enviar comprobante"
+        subtitle={envio ? `${envio.factura.proveedor} · ${fmtMonto(envio.factura.monto)} ${envio.factura.moneda}` : undefined}
+        icon={Send}
+        onClose={() => setEnvio(null)}
+        busy={enviando}
+        size="lg"
+        footer={
+          <>
+            <button onClick={() => setEnvio(null)} disabled={enviando} className="gp-btn gp-btn-secondary">
+              Cancelar
+            </button>
+            <button onClick={enviarComprobante} disabled={enviando} className="gp-btn gp-btn-primary">
+              {enviando ? (
+                <>
+                  <span className="gp-spinner gp-spinner-sm" style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "white" }} />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send size={13} /> Enviar
+                </>
+              )}
+            </button>
+          </>
+        }
+      >
+        {envio && (
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              enviarComprobante();
+            }}
+          >
+            {envioError && (
+              <div className="gp-alert gp-alert-danger">
+                <span>{envioError}</span>
+              </div>
+            )}
+            <div>
+              <label className="gp-label">Asunto</label>
+              <input
+                className="gp-input"
+                value={envio.asunto}
+                onChange={(e) => setEnvio({ ...envio, asunto: e.target.value })}
+                placeholder="Ej: Comprobante de pago"
+                disabled={enviando}
+              />
+            </div>
+            <div>
+              <label className="gp-label">Correo del destinatario *</label>
+              <input
+                type="email"
+                className="gp-input"
+                value={envio.email}
+                onChange={(e) => setEnvio({ ...envio, email: e.target.value })}
+                placeholder="ejemplo@correo.com"
+                disabled={enviando}
+                required
+              />
+            </div>
+            <div>
+              <label className="gp-label">Mensaje</label>
+              <textarea
+                className="gp-input"
+                rows={4}
+                value={envio.mensaje}
+                onChange={(e) => setEnvio({ ...envio, mensaje: e.target.value })}
+                placeholder="Escriba un mensaje opcional..."
+                disabled={enviando}
+              />
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }
