@@ -6,10 +6,7 @@ import UserPermissionsManager from '@/components/UserPermissionsManager';
 // Lo envolvemos en un componente simple para que Next.js lo reconozca como una página.
 const AdminPermissionsPage = () => {
   return (
-    // Puedes envolver esto en el layout de tu dashboard si tienes uno
-    <div className="p-4 md:p-8"> 
-      <UserPermissionsManager />
-    </div>
+    <UserPermissionsManager />
   );
 };
 

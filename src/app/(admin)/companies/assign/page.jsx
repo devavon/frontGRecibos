@@ -1,17 +1,27 @@
 "use client";
 
+import { Building2, Construction } from "lucide-react";
+import PageHeader from "@/components/gp/PageHeader";
+
 // Componente temporal - pendiente de implementación
 const CompanyAssignmentPage = () => {
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-        Asignación de Empresas a Usuarios
-      </h1>
-
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <p className="text-gray-600 dark:text-gray-400">
-          Esta funcionalidad está en desarrollo.
-        </p>
+    <div>
+      <PageHeader
+        icon={Building2}
+        title="Asignación de empresas"
+        subtitle="Empresas a las que cada usuario tiene acceso"
+      />
+      <div className="gp-card gp-fade-in">
+        <div className="gp-empty">
+          <div className="gp-empty-icon">
+            <Construction size={26} />
+          </div>
+          <div className="gp-empty-title">En desarrollo</div>
+          <div className="gp-empty-hint">
+            Mientras tanto, las empresas de cada usuario se asignan desde Administración → Usuarios.
+          </div>
+        </div>
       </div>
     </div>
   );

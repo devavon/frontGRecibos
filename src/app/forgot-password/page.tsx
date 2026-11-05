@@ -1,118 +1,111 @@
 "use client";
+// Recuperar contraseña — diseño del Login de Gpeople.
+// Misma llamada que antes: POST /api/forgot-password { email } → el backend
+// envía una contraseña temporal al correo.
 import React, { useState } from "react";
 import Link from "next/link";
-import { Mail, ArrowLeft } from "lucide-react";
-import Swal from "sweetalert2";
+import { ArrowLeft, CheckCircle2, KeyRound, Mail, ShieldCheck } from "lucide-react";
+import AuthShell, { AuthField, AuthSubmit } from "@/components/gp/AuthShell";
+import GComprobantesLogo from "@/components/gp/GComprobantesLogo";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
- const handleResetRequest = async (e: React.FormEvent) => {
-  e.preventDefault();
-  try {
-const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000")
-  .replace(/\/api$/, "")
-  .replace(/\/$/, "");
-const response = await fetch(`${baseUrl}/api/forgot-password`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ email })
-});
-
-
-    const data = await response.json();
-
-    if (response.ok) {
-      Swal.fire({
-        icon: "success",
-        title: "¡Listo!",
-        text: data.message,
-        confirmButtonColor: "#99bc39"
+  const handleResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setEnviando(true);
+    try {
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000")
+        .replace(/\/api$/, "")
+        .replace(/\/$/, "");
+      const response = await fetch(`${baseUrl}/api/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
-    } else {
-      throw new Error();
-    }
-  } catch (error) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No pudimos conectar con el servidor.",
-      confirmButtonColor: "#d33"
-    });
-  }
-};
-  return (
-    <div 
-      style={{ 
-        position: 'fixed',
-        inset: 0,
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundImage: "url('/images/brand/background-login.jpg')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        zIndex: 99999,
-        padding: '24px'
-      }}
-    >
-      <div 
-        style={{ 
-          backgroundColor: 'white',
-          width: '100%',
-          maxWidth: '500px',
-          borderRadius: '60px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          padding: '50px 40px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center'
-        }}
-      >
-        {/* TÍTULO Y SUBTÍTULO */}
-        <h2 className="text-[32px] font-semibold text-[#99bc39] mb-2 text-center">
-          ¿Problemas para entrar?
-        </h2>
-        <p className="text-gray-400 text-sm mb-10 text-center font-medium">
-          Ingresa tu correo y te ayudaremos a restablecer tu contraseña.
-        </p>
 
-        {/* FORMULARIO */}
-        <form onSubmit={handleResetRequest} className="w-full space-y-6">
-          <div className="flex flex-col">
-            <label className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">
-              Correo Electrónico
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#99bc39]">
-                <Mail size={20} />
-              </span>
-              <input
-                type="email"
-                required
-                placeholder="tu-correo@empresa.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-[#f3f4f6] border-none rounded-2xl outline-none"
-              />
-            </div>
+      if (!response.ok) throw new Error();
+      setEnviado(email.trim());
+    } catch {
+      setError("No pudimos procesar la solicitud. Verifique el correo e intente de nuevo.");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <AuthShell>
+      <div className="flex justify-center mb-7">
+        <GComprobantesLogo size={52} theme="light" />
+      </div>
+
+      {enviado ? (
+        <div className="text-center gp-fade-in">
+          <div
+            className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-4"
+            style={{ backgroundColor: "var(--gp-success-bg)" }}
+          >
+            <CheckCircle2 size={28} style={{ color: "var(--gp-success-text)" }} />
+          </div>
+          <h1 className="text-[22px] font-bold mb-2" style={{ color: "var(--gp-text-primary)", letterSpacing: "-0.02em" }}>
+            Revise su correo
+          </h1>
+          <p className="text-[14px] leading-relaxed" style={{ color: "var(--gp-text-secondary)" }}>
+            Enviamos una <strong>contraseña temporal</strong> a{" "}
+            <span style={{ color: "var(--gp-text-primary)" }}>{enviado}</span>. Ingrese con ella y luego cámbiela en
+            «Mi cuenta → Cambiar contraseña».
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="mb-8">
+            <h1 className="text-[28px] font-bold mb-2" style={{ color: "var(--gp-text-primary)", letterSpacing: "-0.02em" }}>
+              ¿Olvidó su contraseña?
+            </h1>
+            <p className="text-[14px]" style={{ color: "var(--gp-text-secondary)" }}>
+              Escriba su correo y le enviaremos una contraseña temporal.
+            </p>
           </div>
 
-          <button className="w-full bg-[#99bc39] hover:bg-[#86a532] text-white font-bold py-5 rounded-2xl shadow-lg uppercase text-sm mt-4 transition-all">
-            Enviar Instrucciones
-          </button>
-        </form>
+          {error && (
+            <div className="gp-alert gp-alert-danger mb-5 gp-fade-in" style={{ fontSize: 13 }} role="alert">
+              <ShieldCheck size={16} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        {/* BOTÓN VOLVER */}
-        <div className="mt-8">
-          <Link href="/signin" className="flex items-center text-gray-400 hover:text-[#99bc39] transition-colors font-medium text-sm group">
-            <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform" />
-            Volver al Inicio de Sesión
-          </Link>
-        </div>
+          <form onSubmit={handleResetRequest} className="space-y-5">
+            <AuthField
+              label="Correo"
+              icon={Mail}
+              type="email"
+              required
+              placeholder="usuario@garnier.cr"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+            <AuthSubmit loading={enviando} loadingText="Enviando...">
+              <KeyRound size={16} /> Enviarme una contraseña temporal
+            </AuthSubmit>
+          </form>
+        </>
+      )}
+
+      <div className="mt-8 pt-6 border-t" style={{ borderColor: "var(--gp-border)" }}>
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium group gp-font-head"
+          style={{ color: "var(--gp-green-text)" }}
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+          Volver a iniciar sesión
+        </Link>
       </div>
-    </div>
+    </AuthShell>
   );
 }

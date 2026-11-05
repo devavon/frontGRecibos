@@ -1,9 +1,12 @@
 "use client";
 
-import { useSidebar } from "@/context/SidebarContext";
+// Layout principal — misma estructura que Gpeople (MainLayout):
+//   Topbar oscuro (52px) arriba · Sidebar blanco (240px) a la izquierda ·
+//   Breadcrumbs + contenido con scroll propio a la derecha.
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
+import Breadcrumbs from "@/layout/Breadcrumbs";
 import React from "react";
 
 export default function AdminLayout({
@@ -11,31 +14,21 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isExpanded, isHovered, isMobileOpen } = useSidebar();
-
-  const mainContentMargin = isMobileOpen
-    ? "ml-0"
-    : isExpanded || isHovered
-    ? "lg:ml-64"
-    : "lg:ml-20";
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Sidebar */}
-      <AppSidebar />
-      <Backdrop />
-
-      {/* Main Content Area */}
-      <div className={`flex-1 transition-all duration-300 ease-in-out ${mainContentMargin}`}>
-        {/* Header */}
-        <AppHeader />
-
-        {/* Page Content */}
-        <main className="p-4 md:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
+    <div className="h-screen flex flex-col overflow-hidden">
+      <AppHeader />
+      <div className="flex flex-1 overflow-hidden">
+        <Backdrop />
+        <AppSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <Breadcrumbs />
+          <main
+            className="flex-1 overflow-y-auto p-3 sm:p-5"
+            style={{ backgroundColor: "var(--gp-body-bg)" }}
+          >
             {children}
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );
